@@ -104,6 +104,64 @@ between grammars, and states must not be carried from one grammar into another.
 Use `StateStack.Equal` when a previously returned equal pointer is no longer
 being retained.
 
+### Editable documents
+
+`Document` owns the state table and token cache needed to highlight an editable
+buffer without replaying it from the beginning for every visible line:
+
+```go
+document := textmate.NewDocument(grammar, textmate.DocumentOptions{
+	TokenizeOptions: textmate.TokenizeOptions{
+		MaxLineBytes: 20_000,
+		TimeLimit:    5 * time.Millisecond,
+	},
+	CacheCapacity: 20_000,
+})
+document.SetLines([]string{"package main", `const message = "hello"`})
+
+line, ok := document.Line(1) // computes any missing states above line 1
+if ok {
+	for _, token := range line.Tokens {
+		_ = token
+	}
+}
+
+// Replace the half-open range [1, 2). Common-prefix states are retained.
+// The unchanged tail is reattached as soon as its canonical state converges.
+if err := document.ReplaceLines(1, 2, []string{`const message = "goodbye"`}); err != nil {
+	log.Fatal(err)
+}
+
+// Explicitly discard state from a line onward when retrying work that stopped
+// under a transient time budget.
+if err := document.InvalidateFrom(1); err != nil {
+	log.Fatal(err)
+}
+```
+
+`SetLines` and `ReplaceLines` shallow-copy their input slices. `Line`,
+`StateAt`, `Len`, and updates are safe to call concurrently. `StateAt` also
+accepts `document.Len()` to obtain the state after the final line.
+
+Line results are immutable, library-owned views and remain valid after later
+calls or cache eviction. This makes warmed cache hits allocation-free. Copy
+`LineResult.Tokens` before changing token fields; `Token.Scopes` and
+`Token.ScopeStack` remain read-only. Cache keys combine line text with the
+canonical start-state pointer, so identical lines in identical states reuse a
+result even after edits. `CacheCapacity` bounds retained results, with zero
+selecting the 20,000-entry default and a negative value disabling the cache.
+
+Line-length stops are deterministic for a document's fixed options and are
+cached normally. Time-limit stops are transient: `Document` materializes their
+outgoing state so a tiny budget cannot trap a random-access request in a retry
+loop, but it never caches their line result. Calling `Line` again retries that
+line. If a successful retry changes its outgoing state, the document truncates
+stale downstream states and reconciles the unchanged tail again.
+`InvalidateFrom(i)` explicitly discards materialized state from line `i`
+onward and clears the result cache, which is useful before retrying a viewport
+whose earlier state was produced by a time-limited line. Passing `Len()` is
+valid and clears the cache without discarding an existing line state.
+
 ### Interned token scopes
 
 Every token also carries an immutable `*ScopeStack`. Equal scope sequences
