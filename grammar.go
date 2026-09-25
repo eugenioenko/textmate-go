@@ -59,6 +59,7 @@ type Grammar struct {
 	injectionsReady bool
 
 	scopeStacks scopeStackInterner
+	stateStacks stateStackInterner
 }
 
 // newGrammar constructs the integration object used by Registry. The raw
@@ -176,11 +177,23 @@ func (g *Grammar) tokenizeLineWithOptions(
 	if (options.MaxLineBytes > 0 && len(line) > options.MaxLineBytes) ||
 		(options.MaxLineRunes > 0 && lineLength > options.MaxLineRunes) {
 		handler := g.newLineTokenHandler()
-		return stoppedLineResult(handler, prev, lineLength, StopReasonLineLimit, 0)
+		return stoppedLineResult(
+			handler,
+			g.stateStacks.intern(prev),
+			lineLength,
+			StopReasonLineLimit,
+			0,
+		)
 	}
 	if budget.exceeded() {
 		handler := g.newLineTokenHandler()
-		return stoppedLineResult(handler, prev, lineLength, StopReasonTimeLimit, 0)
+		return stoppedLineResult(
+			handler,
+			g.stateStacks.intern(prev),
+			lineLength,
+			StopReasonTimeLimit,
+			0,
+		)
 	}
 
 	input := oniguruma.NewString(line + "\n")
@@ -201,7 +214,7 @@ func (g *Grammar) tokenizeLineWithOptions(
 
 	return LineResult{
 		Tokens:        handler.result(result.stack, lineLength),
-		RuleStack:     result.stack,
+		RuleStack:     g.stateStacks.intern(result.stack),
 		Stopped:       result.stoppedEarly,
 		StoppedReason: stopReason(result.stoppedEarly, StopReasonTimeLimit),
 		StoppedAt:     result.stoppedAt,

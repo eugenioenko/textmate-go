@@ -3,6 +3,7 @@ package textmate
 import (
 	"strconv"
 	"strings"
+	"weak"
 )
 
 type scopeStack struct {
@@ -197,6 +198,13 @@ type stateStackFrame struct {
 
 // StateStack is an immutable tokenizer state. A returned state can safely be
 // retained and compared after subsequent lines have been tokenized.
+//
+// While two equal states returned by the same Grammar are both live, they are
+// represented by the same *StateStack. This makes pointers suitable as
+// short-lived cache keys. The identity is scoped to one Grammar and lasts only
+// as long as the state remains reachable; use Equal after discarding all
+// previously returned equal states. States are not transferable between
+// grammars, and no pointer identity is promised across Grammar instances.
 type StateStack struct {
 	parent                *StateStack
 	ruleID                ruleID
@@ -209,6 +217,83 @@ type StateStack struct {
 	depth                 int
 	structuralHash        uint64
 	equalityHash          uint64
+}
+
+// stateStackInterner canonicalizes returned reusable states without making
+// their lifetimes equal to the Grammar's lifetime. Grammar.mu serializes all
+// access in production; the type itself intentionally has no second lock.
+type stateStackInterner struct {
+	byHash map[uint64][]weak.Pointer[StateStack]
+	calls  uint64
+}
+
+const stateStackInternerSweepInterval = 256
+
+func (i *stateStackInterner) intern(stack *StateStack) *StateStack {
+	if stack == nil || stack == InitialState {
+		return stack
+	}
+	if i.byHash == nil {
+		i.byHash = make(map[uint64][]weak.Pointer[StateStack])
+	}
+
+	hash := stack.equalityHash
+	bucket := i.byHash[hash]
+	live := bucket[:0]
+	var canonical *StateStack
+	for _, reference := range bucket {
+		candidate := reference.Value()
+		if candidate == nil {
+			continue
+		}
+		live = append(live, reference)
+		if canonical == nil && candidate.Equal(stack) {
+			canonical = candidate
+		}
+	}
+	if canonical != nil {
+		i.storeBucket(hash, live, bucket)
+		i.afterLookup()
+		return canonical
+	}
+
+	live = append(live, weak.Make(stack))
+	i.storeBucket(hash, live, bucket)
+	i.afterLookup()
+	return stack
+}
+
+func (i *stateStackInterner) storeBucket(
+	hash uint64,
+	live []weak.Pointer[StateStack],
+	original []weak.Pointer[StateStack],
+) {
+	if len(live) == 0 {
+		delete(i.byHash, hash)
+		return
+	}
+	// Clear discarded tail entries so a future append cannot expose stale weak
+	// references from the reused backing array.
+	if len(live) < len(original) {
+		clear(original[len(live):])
+	}
+	i.byHash[hash] = live
+}
+
+func (i *stateStackInterner) afterLookup() {
+	i.calls++
+	if i.calls%stateStackInternerSweepInterval != 0 {
+		return
+	}
+	for hash, bucket := range i.byHash {
+		live := bucket[:0]
+		for _, reference := range bucket {
+			if reference.Value() != nil {
+				live = append(live, reference)
+			}
+		}
+		i.storeBucket(hash, live, bucket)
+	}
 }
 
 // InitialState is the sentinel passed when tokenizing the first line.

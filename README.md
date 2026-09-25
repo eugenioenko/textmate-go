@@ -94,9 +94,15 @@ for _, diagnostic := range grammar.Diagnostics() {
 ```
 
 A state stack is immutable and reusable, but belongs to the grammar that
-created it. Pass `nil` or `textmate.InitialState` for the first line. Use
-`StateStack.Equal` when incremental highlighting reaches a line whose end
-state may already be current.
+created it. Pass `nil` or `textmate.InitialState` for the first line. Equal
+states returned by the same grammar have the same pointer while both are live,
+so consumers may use `*StateStack` as a short-lived cache key and stop
+incremental highlighting with a pointer comparison. The grammar holds only a
+weak reference to canonical states: if every returned copy is discarded, a
+later equal state may receive a new pointer. Pointer identity is not shared
+between grammars, and states must not be carried from one grammar into another.
+Use `StateStack.Equal` when a previously returned equal pointer is no longer
+being retained.
 
 ### Interned token scopes
 
