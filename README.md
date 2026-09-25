@@ -112,6 +112,29 @@ The legacy `Token.Scopes` field remains available and preserves existing JSON
 and conformance output. Equal stacks share its backing array, so it must be
 treated as read-only. Copy the slice before modifying it.
 
+### Token categories
+
+For consumers that need semantic classes rather than full TextMate theme
+resolution, each token and scope stack exposes a cached coarse category:
+
+```go
+switch token.Category() {
+case textmate.TokenCategoryComment:
+	// Apply the application's comment style.
+case textmate.TokenCategoryInserted:
+	// Apply the application's added-line style.
+}
+```
+
+`textmate.ClassifyScopes(scopes)` provides the same classification for a raw
+scope-name slice. It recognizes common comments, strings, regular expressions,
+numbers, keywords, operators, functions, tags, attributes, types, builtins,
+variables, markup, diff, punctuation, and invalid scopes. The innermost
+recognized scope wins, while reset scopes such as `meta.embedded` prevent an
+outer string from coloring embedded source. This is deliberately a stable,
+theme-neutral heuristic; it is not a replacement for TextMate selector and
+theme resolution.
+
 ### Tokenization limits
 
 Editors can bound work on untrusted, generated, or minified input without

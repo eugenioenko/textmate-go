@@ -29,6 +29,9 @@ type ScopeStack struct {
 	id    ScopeStackID
 	names []string
 
+	// category stores TokenCategory+1; zero means it has not been computed.
+	category atomic.Uint32
+
 	// compatibilityNames backs Token.Scopes. It is deliberately separate from
 	// names so mutation through that legacy field cannot corrupt the interner.
 	compatibilityNames []string
