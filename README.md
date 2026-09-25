@@ -78,6 +78,9 @@ for _, line := range []string{"package main", `const message = "hello"`} {
 	for _, token := range result.Tokens {
 		// token.Start and token.End are rune offsets; token.Scopes is ordered
 		// from the root grammar to the most specific matched scope.
+		// ScopeStack and its ID are comparable cache keys for resolved styles.
+		styleCacheKey := token.ScopeStack.ID()
+		_ = styleCacheKey
 		_ = token
 	}
 	state = result.RuleStack
@@ -94,6 +97,20 @@ A state stack is immutable and reusable, but belongs to the grammar that
 created it. Pass `nil` or `textmate.InitialState` for the first line. Use
 `StateStack.Equal` when incremental highlighting reaches a line whose end
 state may already be current.
+
+### Interned token scopes
+
+Every token also carries an immutable `*ScopeStack`. Equal scope sequences
+produced by one grammar reuse the same pointer and `ScopeStackID`, even when
+the tokenizer reconstructed its internal state. Consumers can therefore cache
+resolved styles by `token.ScopeStack` or `token.ScopeStack.ID()` instead of
+hashing strings for every token. The handle remains valid independently of the
+grammar and its accessors are safe for concurrent reads. `Names` returns a
+defensive copy; `Len`, `At`, and `Range` inspect names without allocating.
+
+The legacy `Token.Scopes` field remains available and preserves existing JSON
+and conformance output. Equal stacks share its backing array, so it must be
+treated as read-only. Copy the slice before modifying it.
 
 ### Tokenization limits
 

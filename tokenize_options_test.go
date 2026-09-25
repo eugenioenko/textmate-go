@@ -23,7 +23,7 @@ func TestTokenizeLineWithOptionsSkipsLongFirstLineBeforeParsing(t *testing.T) {
 		t.Fatalf("rule stack = %v, want initialized root", result.RuleStack)
 	}
 	want := []Token{{Start: 0, End: 3, Scopes: []string{"source.test"}}}
-	if !reflect.DeepEqual(result.Tokens, want) {
+	if !tokenValuesEqual(result.Tokens, want) {
 		t.Fatalf("tokens = %#v, want fallback %#v", result.Tokens, want)
 	}
 
@@ -156,7 +156,7 @@ func TestTokenizeStringBudgetReportsPartialRuneOffsetAndCoversTail(t *testing.T)
 		{Start: 1, End: 2, Scopes: []string{"source.test", "letter.test"}},
 		{Start: 2, End: 3, Scopes: []string{"source.test"}},
 	}
-	if got := handler.result(result.stack, 3); !reflect.DeepEqual(got, want) {
+	if got := handler.result(result.stack, 3); !tokenValuesEqual(got, want) {
 		t.Fatalf("partial tokens = %#v, want %#v", got, want)
 	}
 }

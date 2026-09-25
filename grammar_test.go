@@ -13,6 +13,20 @@ type testGrammarRepository struct {
 	lookupHistory []string
 }
 
+func tokenValuesEqual(got, want []Token) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for index := range got {
+		if got[index].Start != want[index].Start ||
+			got[index].End != want[index].End ||
+			!reflect.DeepEqual(got[index].Scopes, want[index].Scopes) {
+			return false
+		}
+	}
+	return true
+}
+
 func (r *testGrammarRepository) lookup(scopeName string) *RawGrammar {
 	r.lookupHistory = append(r.lookupHistory, scopeName)
 	return r.grammars[scopeName]
@@ -169,7 +183,7 @@ func TestLineTokenHandlerDropsSyntheticNewline(t *testing.T) {
 
 	got := handler.result(nil, 2)
 	want := []Token{{Start: 0, End: 2, Scopes: []string{"source.test"}}}
-	if !reflect.DeepEqual(got, want) {
+	if !tokenValuesEqual(got, want) {
 		t.Fatalf("tokens = %#v, want %#v", got, want)
 	}
 }
@@ -182,7 +196,7 @@ func TestLineTokenHandlerProducesEmptyLineToken(t *testing.T) {
 
 	got := handler.result(stack, 0)
 	want := []Token{{Start: 0, End: 0, Scopes: []string{"source.test"}}}
-	if !reflect.DeepEqual(got, want) {
+	if !tokenValuesEqual(got, want) {
 		t.Fatalf("tokens = %#v, want %#v", got, want)
 	}
 }
@@ -208,7 +222,7 @@ func TestGrammarTokenizeLineUsesRuneOffsetsAndReusableState(t *testing.T) {
 		{Start: 1, End: 2, Scopes: []string{"source.test", "constant.emoji.test"}},
 		{Start: 2, End: 3, Scopes: []string{"source.test"}},
 	}
-	if !reflect.DeepEqual(result.Tokens, want) {
+	if !tokenValuesEqual(result.Tokens, want) {
 		t.Fatalf("tokens = %#v, want %#v", result.Tokens, want)
 	}
 	if result.RuleStack == nil || result.Stopped {
@@ -219,7 +233,7 @@ func TestGrammarTokenizeLineUsesRuneOffsetsAndReusableState(t *testing.T) {
 	}
 
 	next := g.TokenizeLine("plain", result.RuleStack)
-	if got, want := next.Tokens, []Token{{Start: 0, End: 5, Scopes: []string{"source.test"}}}; !reflect.DeepEqual(got, want) {
+	if got, want := next.Tokens, []Token{{Start: 0, End: 5, Scopes: []string{"source.test"}}}; !tokenValuesEqual(got, want) {
 		t.Fatalf("next-line tokens = %#v, want %#v", got, want)
 	}
 }
@@ -288,7 +302,7 @@ func TestGrammarTokenizeLineUsesNestedRepositoryHeadingBeforeParagraph(t *testin
 	if got, want := first.Tokens, []Token{{
 		Start: 0, End: 19,
 		Scopes: []string{"text.html.markdown", "meta.paragraph.markdown"},
-	}}; !reflect.DeepEqual(got, want) {
+	}}; !tokenValuesEqual(got, want) {
 		t.Fatalf("paragraph tokens = %#v, want %#v", got, want)
 	}
 
@@ -309,7 +323,7 @@ func TestGrammarTokenizeLineUsesNestedRepositoryHeadingBeforeParagraph(t *testin
 			"entity.name.section.markdown",
 		}},
 	}
-	if !reflect.DeepEqual(second.Tokens, want) {
+	if !tokenValuesEqual(second.Tokens, want) {
 		t.Fatalf("heading tokens = %#v, want %#v", second.Tokens, want)
 	}
 }

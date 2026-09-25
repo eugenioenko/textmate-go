@@ -10,10 +10,16 @@ import (
 
 // Token is one contiguous span of a tokenized line. Start and End are rune
 // offsets into the original line, and Scopes is ordered outermost first.
+//
+// ScopeStack is the immutable, comparable identity for Scopes. Equal scope
+// sequences from the same Grammar reuse both ScopeStack and the backing array
+// of Scopes. Scopes is retained for source compatibility and must be treated as
+// read-only; callers that need to modify it should copy it first.
 type Token struct {
-	Start  int
-	End    int
-	Scopes []string
+	Start      int
+	End        int
+	Scopes     []string
+	ScopeStack *ScopeStack `json:"-"`
 }
 
 // LineResult is the result of tokenizing one line.
@@ -51,6 +57,8 @@ type Grammar struct {
 
 	injections      []injection
 	injectionsReady bool
+
+	scopeStacks scopeStackInterner
 }
 
 // newGrammar constructs the integration object used by Registry. The raw
@@ -167,16 +175,16 @@ func (g *Grammar) tokenizeLineWithOptions(
 	lineLength := utf8.RuneCountInString(line)
 	if (options.MaxLineBytes > 0 && len(line) > options.MaxLineBytes) ||
 		(options.MaxLineRunes > 0 && lineLength > options.MaxLineRunes) {
-		handler := &lineTokenHandler{}
+		handler := g.newLineTokenHandler()
 		return stoppedLineResult(handler, prev, lineLength, StopReasonLineLimit, 0)
 	}
 	if budget.exceeded() {
-		handler := &lineTokenHandler{}
+		handler := g.newLineTokenHandler()
 		return stoppedLineResult(handler, prev, lineLength, StopReasonTimeLimit, 0)
 	}
 
 	input := oniguruma.NewString(line + "\n")
-	handler := &lineTokenHandler{}
+	handler := g.newLineTokenHandler()
 	result := tokenizeStringWithBudget(
 		g,
 		input,
@@ -451,18 +459,32 @@ func cloneLocation(source *Location) *Location {
 }
 
 type lineTokenHandler struct {
-	tokens  []Token
-	lastEnd int
+	tokens      []Token
+	lastEnd     int
+	scopeStacks *scopeStackInterner
+}
+
+func (g *Grammar) newLineTokenHandler() *lineTokenHandler {
+	return &lineTokenHandler{scopeStacks: &g.scopeStacks}
+}
+
+func (h *lineTokenHandler) internScopes(scopes *attributedScopeStack) *ScopeStack {
+	if h.scopeStacks == nil {
+		h.scopeStacks = &scopeStackInterner{}
+	}
+	return h.scopeStacks.intern(scopes)
 }
 
 func (h *lineTokenHandler) handle(scopes *attributedScopeStack, end int) {
 	if end <= h.lastEnd {
 		return
 	}
+	scopeStack := h.internScopes(scopes)
 	h.tokens = append(h.tokens, Token{
-		Start:  h.lastEnd,
-		End:    end,
-		Scopes: append([]string(nil), scopes.scopeNames()...),
+		Start:      h.lastEnd,
+		End:        end,
+		Scopes:     scopeStack.compatibilityNames,
+		ScopeStack: scopeStack,
 	})
 	h.lastEnd = end
 }
@@ -491,9 +513,15 @@ func (h *lineTokenHandler) result(stack *StateStack, lineLength int) []Token {
 		return result
 	}
 
-	var scopes []string
+	var scopes *attributedScopeStack
 	if stack != nil && stack.contentNameScopesList != nil {
-		scopes = append(scopes, stack.contentNameScopesList.scopeNames()...)
+		scopes = stack.contentNameScopesList
 	}
-	return []Token{{Start: 0, End: lineLength, Scopes: scopes}}
+	scopeStack := h.internScopes(scopes)
+	return []Token{{
+		Start:      0,
+		End:        lineLength,
+		Scopes:     scopeStack.compatibilityNames,
+		ScopeStack: scopeStack,
+	}}
 }
