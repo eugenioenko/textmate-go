@@ -6,6 +6,14 @@ individually compressed JSON assets. `Load` decompresses and parses a grammar
 only on first use, then caches the result. `ForFilename` maps conventional
 filenames and extensions to the root scopes.
 
+`Infos` exposes the pinned catalog metadata for the embedded set: each
+grammar's canonical language ID, display name, scope, aliases, and declared
+file types. `InfoForFilename`, `InfoForID`, `InfoForAlias`, and `InfoForScope`
+keep the different lookup namespaces explicit; in particular, Markdown code
+fences can try the canonical ID first and then the alias without treating an
+alias as a filename. ID and alias matching is case-insensitive. Returned
+metadata owns its slices and is safe for callers to modify.
+
 The selection is listed in `curated.txt`. Regenerate it from the pinned sibling
 checkout with:
 

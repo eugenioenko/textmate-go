@@ -94,12 +94,89 @@ func TestScopeMetadataMustMatchBeforeOutputMutation(t *testing.T) {
 	}
 }
 
+func TestDisplayNameIsRequiredBeforeOutputMutation(t *testing.T) {
+	checkout, revision := makeSourceCheckout(t, []fixtureGrammar{
+		{id: "sample", scope: "source.sample", license: "MIT", omitDisplayName: true},
+	})
+	out := filepath.Join(t.TempDir(), "not-created")
+	err := generate(generatorConfig{
+		source:    checkout,
+		revision:  revision,
+		selection: writeSelection(t, "sample\n"),
+		out:       out,
+	})
+	if err == nil || !strings.Contains(err.Error(), "metadata has no displayName") {
+		t.Fatalf("generate error = %v, want missing displayName", err)
+	}
+	if _, statErr := os.Stat(out); !os.IsNotExist(statErr) {
+		t.Fatalf("invalid generation created output directory: %v", statErr)
+	}
+}
+
+func TestGeneratedMetadataIsDeterministicAndKeepsLookupsSeparate(t *testing.T) {
+	grammars := []grammarMetadata{
+		{
+			ID: "zeta", DisplayName: "Zeta Script", ScopeName: "source.zeta",
+			Aliases: []string{"z", "shared"}, FileTypes: []string{"zeta"},
+			Asset: "data/zeta.json.gz",
+		},
+		{
+			ID: "alpha", DisplayName: "Alpha Script", ScopeName: "source.alpha",
+			Aliases: []string{"a", "shared"}, FileTypes: []string{"alpha", "alpha.test"},
+			Asset: "data/alpha.json.gz",
+		},
+		{
+			ID: "shared", DisplayName: "Shared", ScopeName: "source.shared",
+			Asset: "data/shared.json.gz",
+		},
+	}
+	forward := filepath.Join(t.TempDir(), "forward.go")
+	reverse := filepath.Join(t.TempDir(), "reverse.go")
+	if err := writeGeneratedGo(forward, "revision", grammars); err != nil {
+		t.Fatal(err)
+	}
+	for left, right := 0, len(grammars)-1; left < right; left, right = left+1, right-1 {
+		grammars[left], grammars[right] = grammars[right], grammars[left]
+	}
+	if err := writeGeneratedGo(reverse, "revision", grammars); err != nil {
+		t.Fatal(err)
+	}
+	forwardData, err := os.ReadFile(forward)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reverseData, err := os.ReadFile(reverse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(forwardData, reverseData) {
+		t.Fatal("generated metadata depends on input order")
+	}
+	contents := string(forwardData)
+	for _, want := range []string{
+		`ID:          "alpha"`,
+		`DisplayName: "Alpha Script"`,
+		`ScopeName:   "source.alpha"`,
+		`Aliases:     []string{"a", "shared"}`,
+		`FileTypes:   []string{"alpha", "alpha.test"}`,
+		`"shared": "alpha"`, // Alias collision resolves to lexicographically first ID.
+		`"shared": 1`,       // The canonical-ID lookup remains a separate map.
+	} {
+		if !strings.Contains(contents, want) {
+			t.Errorf("generated metadata does not contain %q\n%s", want, contents)
+		}
+	}
+}
+
 type fixtureGrammar struct {
-	id            string
-	scope         string
-	metadataScope string
-	license       string
-	fileTypes     []string
+	id              string
+	displayName     string
+	omitDisplayName bool
+	scope           string
+	metadataScope   string
+	license         string
+	aliases         []string
+	fileTypes       []string
 }
 
 func makeSourceCheckout(t *testing.T, grammars []fixtureGrammar) (string, string) {
@@ -118,6 +195,20 @@ func makeSourceCheckout(t *testing.T, grammars []fixtureGrammar) (string, string
 			metadataScope = grammar.scope
 		}
 		metadata.WriteString("  {\n")
+		if !grammar.omitDisplayName {
+			displayName := grammar.displayName
+			if displayName == "" {
+				displayName = "Display " + grammar.id
+			}
+			fmt.Fprintf(&metadata, "    displayName: '%s',\n", displayName)
+		}
+		if len(grammar.aliases) != 0 {
+			metadata.WriteString("    aliases: [\n")
+			for _, alias := range grammar.aliases {
+				fmt.Fprintf(&metadata, "      '%s',\n", alias)
+			}
+			metadata.WriteString("    ],\n")
+		}
 		if grammar.license != "" {
 			fmt.Fprintf(&metadata, "    license: '%s',\n", grammar.license)
 		}

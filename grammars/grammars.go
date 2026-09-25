@@ -30,6 +30,79 @@ type cacheEntry struct {
 
 var grammarCache sync.Map
 
+// GrammarInfo describes an embedded grammar and the language names callers can
+// use to select it. ID is the canonical language ID from the pinned grammar
+// catalog. Aliases are alternate language labels suitable for Markdown code
+// fences. FileTypes are the file types declared by the grammar itself.
+//
+// Lookup functions return independent copies, so callers may modify the slice
+// fields without changing package data.
+type GrammarInfo struct {
+	ID          string
+	DisplayName string
+	ScopeName   string
+	Aliases     []string
+	FileTypes   []string
+}
+
+// Infos returns metadata for every embedded grammar, sorted by canonical ID.
+func Infos() []GrammarInfo {
+	infos := make([]GrammarInfo, len(generatedGrammarInfos))
+	for index, info := range generatedGrammarInfos {
+		infos[index] = cloneGrammarInfo(info)
+	}
+	return infos
+}
+
+// InfoForScope returns metadata for scopeName.
+func InfoForScope(scopeName string) (GrammarInfo, bool) {
+	index, ok := generatedInfoByScope[scopeName]
+	if !ok {
+		return GrammarInfo{}, false
+	}
+	return cloneGrammarInfo(generatedGrammarInfos[index]), true
+}
+
+// InfoForID returns metadata for a canonical language ID. Matching is
+// case-insensitive and ignores surrounding whitespace. It does not search
+// aliases; use InfoForAlias for alternate language labels.
+func InfoForID(id string) (GrammarInfo, bool) {
+	index, ok := generatedInfoByID[strings.ToLower(strings.TrimSpace(id))]
+	if !ok {
+		return GrammarInfo{}, false
+	}
+	return cloneGrammarInfo(generatedGrammarInfos[index]), true
+}
+
+// InfoForAlias returns metadata for an alternate language label, such as a
+// Markdown code-fence label. Matching is case-insensitive and ignores
+// surrounding whitespace. Canonical IDs are intentionally handled separately
+// by InfoForID.
+func InfoForAlias(alias string) (GrammarInfo, bool) {
+	id, ok := generatedAliases[strings.ToLower(strings.TrimSpace(alias))]
+	if !ok {
+		return GrammarInfo{}, false
+	}
+	return InfoForID(id)
+}
+
+// InfoForFilename returns metadata for the grammar selected for name. It uses
+// the same exact-name, compound-suffix, and extension matching as
+// ScopeForFilename.
+func InfoForFilename(name string) (GrammarInfo, bool) {
+	scopeName := ScopeForFilename(name)
+	if scopeName == "" {
+		return GrammarInfo{}, false
+	}
+	return InfoForScope(scopeName)
+}
+
+func cloneGrammarInfo(info GrammarInfo) GrammarInfo {
+	info.Aliases = append([]string(nil), info.Aliases...)
+	info.FileTypes = append([]string(nil), info.FileTypes...)
+	return info
+}
+
 // Load returns the embedded grammar with scopeName. It returns (nil, nil) when
 // the scope is not in the curated set, making it directly usable as a
 // textmate.RegistryOptions.LoadGrammar callback.

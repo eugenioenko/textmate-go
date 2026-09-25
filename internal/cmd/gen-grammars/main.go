@@ -24,25 +24,27 @@ type rawMetadata struct {
 }
 
 type grammarMetadata struct {
-	ID        string
-	ScopeName string
-	FileTypes []string
-	Aliases   []string
-	Asset     string
-	License   string
-	Source    string
-	SHA       string
-	RawBytes  int64
-	GzipBytes int64
+	ID          string
+	DisplayName string
+	ScopeName   string
+	FileTypes   []string
+	Aliases     []string
+	Asset       string
+	License     string
+	Source      string
+	SHA         string
+	RawBytes    int64
+	GzipBytes   int64
 }
 
 type sourceMetadata struct {
-	Name      string
-	ScopeName string
-	License   string
-	Source    string
-	SHA       string
-	Aliases   []string
+	Name        string
+	DisplayName string
+	ScopeName   string
+	License     string
+	Source      string
+	SHA         string
+	Aliases     []string
 }
 
 type preparedGrammar struct {
@@ -134,6 +136,9 @@ func prepareGeneration(root, revision, selection string) (*generationPlan, error
 		if source.ScopeName == "" {
 			return nil, fmt.Errorf("grammar %q metadata has no scopeName", id)
 		}
+		if source.DisplayName == "" {
+			return nil, fmt.Errorf("grammar %q metadata has no displayName", id)
+		}
 		if source.License == "" {
 			return nil, fmt.Errorf("grammar %q metadata has no license", id)
 		}
@@ -176,7 +181,8 @@ func prepareGeneration(root, revision, selection string) (*generationPlan, error
 		plan.grammars = append(plan.grammars, preparedGrammar{
 			contents: compact.Bytes(),
 			metadata: grammarMetadata{
-				ID: id, ScopeName: raw.ScopeName, FileTypes: raw.FileTypes,
+				ID: id, DisplayName: source.DisplayName,
+				ScopeName: raw.ScopeName, FileTypes: raw.FileTypes,
 				Asset: asset, Aliases: source.Aliases, License: source.License,
 				Source: source.Source, SHA: source.SHA, RawBytes: int64(compact.Len()),
 			},
@@ -247,6 +253,8 @@ func readSourceMetadata(path string) (map[string]sourceMetadata, error) {
 			switch key {
 			case "name":
 				current.Name = value
+			case "displayName":
+				current.DisplayName = value
 			case "scopeName":
 				current.ScopeName = value
 			case "license":
@@ -499,6 +507,9 @@ func writeGzip(path string, data []byte) (int64, error) {
 }
 
 func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
+	grammars = append([]grammarMetadata(nil), grammars...)
+	sort.Slice(grammars, func(i, j int) bool { return grammars[i].ID < grammars[j].ID })
+
 	extensions := make(map[string]candidate)
 	filenames := map[string]candidate{
 		"dockerfile":    {ScopeName: "source.dockerfile", Priority: 100},
@@ -559,6 +570,38 @@ func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
 	fmt.Fprintln(&buffer, "package grammars")
 	fmt.Fprintln(&buffer)
 	fmt.Fprintf(&buffer, "const SourceRevision = %q\n\n", revision)
+	fmt.Fprintln(&buffer, "var generatedGrammarInfos = []GrammarInfo{")
+	for _, grammar := range grammars {
+		fmt.Fprintln(&buffer, "\t{")
+		fmt.Fprintf(&buffer, "\t\tID: %q,\n", grammar.ID)
+		fmt.Fprintf(&buffer, "\t\tDisplayName: %q,\n", grammar.DisplayName)
+		fmt.Fprintf(&buffer, "\t\tScopeName: %q,\n", grammar.ScopeName)
+		writeStringSliceField(&buffer, "Aliases", grammar.Aliases)
+		writeStringSliceField(&buffer, "FileTypes", grammar.FileTypes)
+		fmt.Fprintln(&buffer, "\t},")
+	}
+	fmt.Fprintln(&buffer, "}")
+	infoByID := make(map[string]int, len(grammars))
+	infoByScope := make(map[string]int, len(grammars))
+	aliases := make(map[string]string)
+	for index, grammar := range grammars {
+		infoByID[strings.ToLower(grammar.ID)] = index
+		infoByScope[grammar.ScopeName] = index
+		for _, alias := range grammar.Aliases {
+			key := strings.ToLower(strings.TrimSpace(alias))
+			if key == "" {
+				continue
+			}
+			// Keep future catalog collisions reproducible. Canonical IDs live in a
+			// separate lookup, so an alias can never displace an ID.
+			if current, ok := aliases[key]; !ok || grammar.ID < current {
+				aliases[key] = grammar.ID
+			}
+		}
+	}
+	writeIndexMap(&buffer, "generatedInfoByID", infoByID)
+	writeIndexMap(&buffer, "generatedInfoByScope", infoByScope)
+	writeStringMap(&buffer, "generatedAliases", aliases)
 	fmt.Fprintln(&buffer, "var generatedAssets = map[string]string{")
 	for _, grammar := range grammars {
 		fmt.Fprintf(&buffer, "\t%q: %q,\n", grammar.ScopeName, grammar.Asset)
@@ -581,6 +624,46 @@ func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
 		return err
 	}
 	return os.WriteFile(path, formatted, 0o644)
+}
+
+func writeStringSliceField(buffer *bytes.Buffer, name string, values []string) {
+	if len(values) == 0 {
+		return
+	}
+	fmt.Fprintf(buffer, "\t\t%s: []string{", name)
+	for index, value := range values {
+		if index != 0 {
+			fmt.Fprint(buffer, ", ")
+		}
+		fmt.Fprintf(buffer, "%q", value)
+	}
+	fmt.Fprintln(buffer, "},")
+}
+
+func writeIndexMap(buffer *bytes.Buffer, name string, values map[string]int) {
+	fmt.Fprintf(buffer, "var %s = map[string]int{\n", name)
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		fmt.Fprintf(buffer, "\t%q: %d,\n", key, values[key])
+	}
+	fmt.Fprintln(buffer, "}")
+}
+
+func writeStringMap(buffer *bytes.Buffer, name string, values map[string]string) {
+	fmt.Fprintf(buffer, "var %s = map[string]string{\n", name)
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		fmt.Fprintf(buffer, "\t%q: %q,\n", key, values[key])
+	}
+	fmt.Fprintln(buffer, "}")
 }
 
 func addCandidate(values map[string]candidate, key, scopeName string, priority int) {
