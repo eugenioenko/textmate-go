@@ -16,7 +16,7 @@ Development and conformance testing use sibling checkouts at these revisions:
 - `textmate-grammars-themes`: `37edd1b26f18838050661d912334aba0ca7f4931`
 - `gopher-textmate`: `ce2b42e5386c93ae781add9df2e6328338b06f9e`
 - `regexp2`: v2.8.0 base `9d0d2ffe88a8b90012f7979ec85424e46d5ef48f`,
-  local capture-index branch `9a1d83dbb8212cde33a50d54eee6e43ce7d60e09`
+  local capture-index branch `49b524a3791dd2f86ec56b81bb7acf9626c1ded4`
 
 The implementation is ported from `vscode-textmate`; its Microsoft MIT license
 is reproduced in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).

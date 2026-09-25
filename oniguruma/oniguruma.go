@@ -308,6 +308,12 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 	var best *Match
 	for index, pattern := range s.patterns {
 		variant := pattern.variantKey(allowA, allowG, allowZ)
+		maxStartExclusive := -1
+		if best != nil {
+			// Patterns are visited in tie-breaking order. Once an earlier pattern
+			// has matched at q, a later one can only win by starting before q.
+			maxStartExclusive = best.Captures[0].Start
+		}
 		// A failed unanchored search from p cannot succeed from a later
 		// position on the same input. This is not true for \G: its meaning is
 		// the current search start, so the same pattern must be retried when
@@ -321,13 +327,15 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 				}
 				captures = cached
 			} else {
-				captures, err = pattern.match(input.runes, start, allowA, allowG, allowZ)
-				if err == nil {
+				captures, err = pattern.match(input.runes, start, maxStartExclusive, allowA, allowG, allowZ)
+				// A bounded miss only proves that the pattern cannot beat this
+				// call's winner. It may still match later on the same input.
+				if err == nil && (captures != nil || maxStartExclusive < 0) {
 					pattern.rememberSearch(input.id, variant, start, captures)
 				}
 			}
 		} else {
-			captures, err = pattern.match(input.runes, start, allowA, allowG, allowZ)
+			captures, err = pattern.match(input.runes, start, maxStartExclusive, allowA, allowG, allowZ)
 		}
 		if err != nil {
 			kind := DiagnosticMatchError
@@ -458,7 +466,7 @@ func (p *compiledPattern) compileAnchorVariants() error {
 	return nil
 }
 
-func (p *compiledPattern) match(text []rune, start int, allowA, allowG, allowZ bool) ([]Capture, error) {
+func (p *compiledPattern) match(text []rune, start, maxStartExclusive int, allowA, allowG, allowZ bool) ([]Capture, error) {
 	regex, err := p.compile(allowA, allowG, allowZ)
 	if err != nil || regex == nil {
 		return nil, err
@@ -468,7 +476,12 @@ func (p *compiledPattern) match(text []rune, start int, allowA, allowG, allowZ b
 	if scratch != nil {
 		destination = *scratch
 	}
-	indices, err := regex.FindRunesCaptureIndicesStartingAt(text, start, destination)
+	var indices []regexp2.CaptureIndex
+	if maxStartExclusive < 0 {
+		indices, err = regex.FindRunesCaptureIndicesStartingAt(text, start, destination)
+	} else {
+		indices, err = regex.FindRunesCaptureIndicesStartingAtBefore(text, start, maxStartExclusive, destination)
+	}
 	if cap(indices) != 0 {
 		if scratch == nil {
 			scratch = new([]regexp2.CaptureIndex)

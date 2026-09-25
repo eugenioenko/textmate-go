@@ -35,6 +35,46 @@ func TestFindNextMatch(t *testing.T) {
 	}
 }
 
+func TestFindNextMatchWinnerBoundPreservesFullInput(t *testing.T) {
+	tests := []struct {
+		name     string
+		patterns []string
+		text     string
+		want     *Match
+	}{
+		{
+			name: "later winner consumes beyond earlier start", patterns: []string{`a`, `x.*a`}, text: "x---a",
+			want: &Match{Index: 1, Captures: []Capture{{Start: 0, End: 5}}},
+		},
+		{
+			name: "later winner looks beyond earlier start", patterns: []string{`z`, `x(?=---z)`}, text: "x---z",
+			want: &Match{Index: 1, Captures: []Capture{{Start: 0, End: 1}}},
+		},
+		{
+			name: "match at bound loses tie", patterns: []string{`z`, `(?=z)`}, text: "x---z",
+			want: &Match{Index: 0, Captures: []Capture{{Start: 4, End: 5}}},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := NewScanner(test.patterns).FindNextMatch(NewString(test.text), 0, FindOptionNone)
+			assertMatch(t, got, test.want)
+		})
+	}
+}
+
+func TestFindNextMatchBoundedMissDoesNotPoisonCache(t *testing.T) {
+	scanner := NewScanner([]string{`a`, `z`})
+	input := NewString("xayz")
+	first := scanner.FindNextMatch(input, 0, FindOptionNone)
+	assertMatch(t, first, &Match{Index: 0, Captures: []Capture{{Start: 1, End: 2}}})
+
+	// The z search in the first call was bounded before the a match. Its miss
+	// must not be remembered as an unbounded failure for this later start.
+	second := scanner.FindNextMatch(input, 2, FindOptionNone)
+	assertMatch(t, second, &Match{Index: 1, Captures: []Capture{{Start: 3, End: 4}}})
+}
+
 func TestStringAndRuneOffsets(t *testing.T) {
 	input := NewString("a😀é")
 	if input.Content() != "a😀é" || input.Len() != 3 {

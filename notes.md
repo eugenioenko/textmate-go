@@ -374,3 +374,9 @@ still dominates CPU and TSX still shows one slow early sample. The next CPU
 target is reducing the 88–127 separate pattern searches per line. The current
 module uses a sibling `../regexp2` replacement; publishing requires upstreaming
 the API or hosting a durable fork.
+
+A follow-up bounded later pattern searches at the current winner's start while
+keeping the full line visible to lookaheads. Medians fell to 98.9us/line for
+TSX and 71.1us/line for HTML, leaving them 5.6x and 12.5x behind Chroma; Go and
+Markdown are already within 1.7x. The remaining gap needs fewer or faster regex
+searches rather than more capture-allocation work.
