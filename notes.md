@@ -380,3 +380,10 @@ keeping the full line visible to lookaheads. Medians fell to 98.9us/line for
 TSX and 71.1us/line for HTML, leaving them 5.6x and 12.5x behind Chroma; Go and
 Markdown are already within 1.7x. The remaining gap needs fewer or faster regex
 searches rather than more capture-allocation work.
+
+Two scanner experiments were not retained. A conservative Go `regexp` fast
+path covered only about 20% of hot searches and improved TSX/HTML by 7.8%/2.9%
+while allocating more. Combining eligible patterns into one alternation saved
+14%/16% but was still far from the target. `regexp2cg` generated about 20MB and
+832k lines of Go for 351 TSX/HTML variants and had not compiled after 65s, so
+that experiment was stopped before runtime measurements.
