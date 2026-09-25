@@ -1,0 +1,9 @@
+defaults: &defaults
+  enabled: true
+  message: |
+    first line
+    second line
+
+development:
+  <<: *defaults
+  tags: [syntax, state]

@@ -1,0 +1,12 @@
+# No known Phase 3 conformance failures.
+#
+# `pnpm test:go` passes 101 tests: all 95 upstream tokenization fixtures, two
+# protocol tests, and four infrastructure tests; three opt-in gates are skipped.
+# `pnpm test:go:themes` passes the 72 upstream golden fixture files under all 14
+# pinned themes using an isolated copy of the reference checkout.
+#
+# The Go theme gate deliberately excludes 55 other tests from upstream
+# `themes.test.ts`: 53 test vscode-textmate's own Theme parser/matcher, which
+# this project does not port, and two are unbounded tokenization-time smoke
+# tests rather than golden conformance cases. The complete 127-test theme file
+# remains an enforced reference-adapter gate via `pnpm test:reference:themes`.

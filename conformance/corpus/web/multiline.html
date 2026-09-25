@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <style>
+    /* state crosses this line
+       before the declaration */
+    :root { --accent: #58a6ff; }
+  </style>
+</head>
+<body>
+  <button
+    class="primary"
+    aria-label="Save changes"
+    data-count="3">
+    Save
+  </button>
+  <script>
+    const user = "Ada";
+    const message = `hello ${user}`;
+    document.querySelector("button")?.setAttribute("title", message);
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "vscode-textmate-reference": ["../../vscode-textmate/src/main.ts"],
+      "vscode-textmate-theme": ["../../vscode-textmate/src/theme.ts"],
+      "vscode-textmate-attributes": ["../../vscode-textmate/src/encodedTokenAttributes.ts"],
+      "vscode-textmate-basic-scopes": ["../../vscode-textmate/src/grammar/basicScopesAttributeProvider.ts"],
+      "vscode-textmate-onig-types": ["../../vscode-textmate/src/onigLib.ts"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}

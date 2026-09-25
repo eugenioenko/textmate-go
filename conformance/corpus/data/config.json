@@ -1,0 +1,6 @@
+{
+  "name": "textmate-go",
+  "enabled": true,
+  "labels": ["syntax", "λ", "🙂"],
+  "limits": { "lines": 2000, "milliseconds": 5 }
+}

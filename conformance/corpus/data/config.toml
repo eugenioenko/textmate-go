@@ -1,0 +1,9 @@
+title = "textmate-go"
+description = """
+A tokenizer with state carried
+between physical lines.
+"""
+
+[limits]
+line_microseconds = 100
+timeout_milliseconds = 5

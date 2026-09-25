@@ -1,0 +1,9 @@
+/* Theme variables
+   deliberately span lines. */
+:root {
+  --accent: rgb(88 166 255);
+}
+
+.card:hover > strong {
+  color: var(--accent);
+}

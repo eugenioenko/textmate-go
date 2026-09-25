@@ -1,0 +1,12 @@
+# Go build and test artifacts
+/textmate-cli
+*.test
+*.out
+
+# Conformance dependencies
+node_modules/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store

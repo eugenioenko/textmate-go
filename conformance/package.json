@@ -1,0 +1,26 @@
+{
+  "name": "textmate-go-conformance",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.3.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts src/client.test.ts",
+    "test:reference": "TEXTMATE_BACKEND=reference vitest run --config vitest.config.ts",
+    "test:reference:tokenization": "TEXTMATE_BACKEND=reference TEXTMATE_TOKENIZATION_ONLY=1 vitest run --config vitest.config.ts",
+    "test:reference:themes": "TEXTMATE_THEME_BACKEND=reference TEXTMATE_THEME_ALL_TESTS=1 node scripts/run-theme-conformance.mjs",
+    "test:go": "TEXTMATE_BACKEND=go TEXTMATE_TOKENIZATION_ONLY=1 vitest run --config vitest.config.ts",
+    "test:go:theme-scopes": "TEXTMATE_BACKEND=go TEXTMATE_TOKENIZATION_ONLY=1 TEXTMATE_THEME_SCOPE_DIFF=1 vitest run --config vitest.config.ts src/themeScopeDiff.test.ts",
+    "test:go:themes": "node scripts/run-theme-conformance.mjs",
+    "test:differential": "TEXTMATE_BACKEND=go TEXTMATE_DIFFERENTIAL=1 TEXTMATE_DIFFERENTIAL_MODE=corpus vitest run --config vitest.config.ts src/differential.test.ts",
+    "test:differential:fuzz": "TEXTMATE_BACKEND=go TEXTMATE_DIFFERENTIAL=1 TEXTMATE_DIFFERENTIAL_MODE=fuzz vitest run --config vitest.config.ts src/differential.test.ts",
+    "test:differential:ci": "TEXTMATE_BACKEND=go TEXTMATE_DIFFERENTIAL=1 TEXTMATE_DIFFERENTIAL_MODE=all TEXTMATE_DIFF_FUZZ_CASES=48 vitest run --config vitest.config.ts src/differential.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.18",
+    "vscode-oniguruma": "1.7.0"
+  }
+}

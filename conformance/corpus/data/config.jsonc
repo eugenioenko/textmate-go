@@ -1,0 +1,4 @@
+{
+  // Comments make this JSONC rather than JSON.
+  "editor": { "theme": "dark" }
+}

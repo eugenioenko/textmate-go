@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_theme_goldens:
+        description: Run the isolated 72-file theme golden suite
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VSCODE_TEXTMATE_REVISION: fbe49961ab8077e587fdf5282019655ae69e5f9e
+  TM_GRAMMARS_REVISION: 37edd1b26f18838050661d912334aba0ca7f4931
+  VSCODE_TEXTMATE_DIR: ${{ github.workspace }}/../vscode-textmate
+  TM_GRAMMARS_DIR: ${{ github.workspace }}/../tm-grammars/packages/tm-grammars
+
+jobs:
+  verify:
+    name: Go and conformance gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out textmate-go
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.25.1
+          cache: true
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.3.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: conformance/pnpm-lock.yaml
+
+      - name: Clone pinned reference repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          clone_exact() {
+            local url="$1"
+            local target="$2"
+            local revision="$3"
+            git init --quiet "$target"
+            git -C "$target" remote add origin "$url"
+            git -C "$target" fetch --quiet --depth=1 origin "$revision"
+            git -C "$target" checkout --quiet --detach FETCH_HEAD
+            test "$(git -C "$target" rev-parse HEAD)" = "$revision"
+            test -z "$(git -C "$target" status --porcelain --untracked-files=all)"
+          }
+          clone_exact \
+            https://github.com/microsoft/vscode-textmate.git \
+            "$VSCODE_TEXTMATE_DIR" \
+            "$VSCODE_TEXTMATE_REVISION"
+          clone_exact \
+            https://github.com/shikijs/textmate-grammars-themes.git \
+            "${TM_GRAMMARS_DIR%/packages/tm-grammars}" \
+            "$TM_GRAMMARS_REVISION"
+
+      - name: Install pinned dependencies
+        run: |
+          go mod download
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
+          pnpm --dir conformance install --frozen-lockfile
+
+      - name: Check Go formatting and static analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t go_files < <(
+            find . -type f -name '*.go' -not -path './conformance/corpus/*' -print
+          )
+          unformatted="$(gofmt -l "${go_files[@]}")"
+          if [[ -n "$unformatted" ]]; then
+            printf 'These Go files need gofmt:\n%s\n' "$unformatted" >&2
+            exit 1
+          fi
+          CGO_ENABLED=0 go vet ./...
+          "$(go env GOPATH)/bin/golangci-lint" run ./...
+
+      - name: Test and build pure Go
+        run: |
+          CGO_ENABLED=0 go test ./...
+          CGO_ENABLED=0 go build ./...
+
+      - name: Run race detector
+        run: go test -race -count=1 ./...
+
+      - name: Run bounded native tokenizer fuzzing
+        run: go test -run '^$' -fuzz '^FuzzTokenizeLine$' -fuzztime=10s .
+
+      - name: Verify generated grammar artifacts and compatibility report
+        shell: bash
+        run: |
+          set -euo pipefail
+          go generate ./grammars
+          test -z "$(git status --porcelain -- grammars)"
+          report_file="$(mktemp)"
+          go run ./cmd/grammar-report \
+            -grammars ../tm-grammars/packages/tm-grammars/grammars \
+            -revision "$TM_GRAMMARS_REVISION" > "$report_file"
+          cmp docs/grammar-report.md "$report_file"
+
+      - name: Validate standalone embedded grammar corpus
+        env:
+          TEXTMATE_GO_REQUIRE_EMBEDDED_CORPUS: "1"
+          TM_GRAMMARS_DIR: ${{ github.workspace }}/../tm-grammars/packages/tm-grammars
+        run: CGO_ENABLED=0 go test -count=1 ./grammars
+
+      - name: Type-check conformance harness
+        run: pnpm --dir conformance typecheck
+
+      - name: Validate reference adapter tokenization
+        run: pnpm --dir conformance test:reference:tokenization
+
+      - name: Validate complete reference theme adapter
+        run: pnpm --dir conformance test:reference:themes
+
+      - name: Validate Go tokenization
+        run: pnpm --dir conformance test:go
+
+      - name: Validate theme source and scope parity
+        run: pnpm --dir conformance test:go:theme-scopes
+
+      - name: Validate differential corpus and bounded fuzzer
+        run: pnpm --dir conformance test:differential:ci
+
+      - name: Validate isolated theme goldens
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_theme_goldens }}
+        run: pnpm --dir conformance test:go:themes
+
+      - name: Verify reference repositories remained pinned and clean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C "$VSCODE_TEXTMATE_DIR" rev-parse HEAD)" = "$VSCODE_TEXTMATE_REVISION"
+          test -z "$(git -C "$VSCODE_TEXTMATE_DIR" status --porcelain --untracked-files=all)"
+          tm_grammars_root="${TM_GRAMMARS_DIR%/packages/tm-grammars}"
+          test "$(git -C "$tm_grammars_root" rev-parse HEAD)" = "$TM_GRAMMARS_REVISION"
+          test -z "$(git -C "$tm_grammars_root" status --porcelain --untracked-files=all)"
