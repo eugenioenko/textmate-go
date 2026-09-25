@@ -173,6 +173,8 @@ type compiledPattern struct {
 
 	searchMu sync.Mutex
 	searches [8]cachedSearch
+
+	captureIndices sync.Pool
 }
 
 type cachedSearch struct {
@@ -461,24 +463,28 @@ func (p *compiledPattern) match(text []rune, start int, allowA, allowG, allowZ b
 	if err != nil || regex == nil {
 		return nil, err
 	}
-	match, err := regex.FindRunesMatchStartingAt(text, start)
-	if err != nil || match == nil {
+	scratch, _ := p.captureIndices.Get().(*[]regexp2.CaptureIndex)
+	var destination []regexp2.CaptureIndex
+	if scratch != nil {
+		destination = *scratch
+	}
+	indices, err := regex.FindRunesCaptureIndicesStartingAt(text, start, destination)
+	if cap(indices) != 0 {
+		if scratch == nil {
+			scratch = new([]regexp2.CaptureIndex)
+		}
+		*scratch = indices[:0]
+		defer p.captureIndices.Put(scratch)
+	}
+	if err != nil || len(indices) == 0 {
 		return nil, err
 	}
-	if match.GroupCount() == 1 {
-		return []Capture{{
-			Start: match.RuneIndex,
-			End:   match.RuneIndex + match.RuneLength,
-		}}, nil
-	}
-	groups := match.Groups()
-	captures := make([]Capture, len(groups))
-	for index, group := range groups {
-		if len(group.Captures) == 0 {
+	captures := make([]Capture, len(indices))
+	for index, capture := range indices {
+		if capture.RuneIndex < 0 {
 			captures[index] = Capture{Start: -1, End: -1}
 			continue
 		}
-		capture := group.Captures[len(group.Captures)-1]
 		captures[index] = Capture{Start: capture.RuneIndex, End: capture.RuneIndex + capture.RuneLength}
 	}
 	return captures, nil

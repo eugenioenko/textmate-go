@@ -15,6 +15,8 @@ Development and conformance testing use sibling checkouts at these revisions:
 - `vscode-textmate`: `fbe49961ab8077e587fdf5282019655ae69e5f9e`
 - `textmate-grammars-themes`: `37edd1b26f18838050661d912334aba0ca7f4931`
 - `gopher-textmate`: `ce2b42e5386c93ae781add9df2e6328338b06f9e`
+- `regexp2`: v2.8.0 base `9d0d2ffe88a8b90012f7979ec85424e46d5ef48f`,
+  local capture-index branch `9a1d83dbb8212cde33a50d54eee6e43ce7d60e09`
 
 The implementation is ported from `vscode-textmate`; its Microsoft MIT license
 is reproduced in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
@@ -28,6 +30,11 @@ The v2 line was selected for ordered mixed captures, current Unicode tables,
 bounded backtracking, and its Go 1.25 API. Oniguruma-only syntax is translated
 before compilation; unsupported constructs are recorded as diagnostics and the
 affected construct or pattern is safely degraded.
+
+The current performance branch uses a sibling `../regexp2` checkout with a
+text-free capture-index API. This avoids constructing public match/group data
+that the tokenizer immediately discarded. The local replacement is temporary:
+it must be upstreamed or moved to a durable fork before a module release.
 
 ## Development
 

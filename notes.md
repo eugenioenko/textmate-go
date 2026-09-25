@@ -287,3 +287,90 @@ Add dated entries below as the port progresses: decisions, surprises, numbers.
   `docs/performance-baseline.md`, and the performance done-checkbox stays open.
 - Phase 5 changes the separate ttt repository and still requires explicit
   maintainer approval, so it was not started.
+
+### 2026-09-25: condensed implementation arc
+
+- Began with a one-token stub and pinned clean checkouts of vscode-textmate,
+  Shiki's grammar collection, and gopher-textmate. A JSON-lines Go process and
+  a thin TypeScript adapter let us run VS Code's tests unchanged instead of
+  translating their expected results.
+- Built the Oniguruma compatibility layer on regexp2 first, then ported the
+  rule compiler, tokenizer, immutable line-state stack, captures, injections,
+  dependency loading, registry, and public API. Unsupported regex constructs
+  fail locally with diagnostics rather than taking down an entire grammar.
+- Closed the gaps incrementally: 3/95 fixtures with the stub, 93/95 after the
+  core port, then 95/95 tokenization fixtures and 72/72 real theme files. The
+  broader gate finished at 82/82 real and focused files, with a 500-case fuzz
+  run also matching vscode-textmate.
+- Packaged 40 reviewed root grammars plus one support grammar as independent
+  gzip assets. The embedded set is 331,365 bytes and saves about 1.0MB in a
+  stripped binary versus embedding all 260 grammars. The finished library is
+  pure Go and passes race, vet, lint, and `CGO_ENABLED=0` build gates.
+
+### 2026-09-25: preliminary Chroma performance comparison
+
+The first direct comparison used Chroma v2.24.1 and one logical CPU on the
+Ryzen 7 6800H host. Both engines were warmed, every token was consumed, and the
+reported values are medians of five samples. This test measures raw line
+tokenization; it excludes ttt's result cache and style conversion.
+
+| Input | textmate-go | Chroma | Chroma lead | Allocated per line, TM / Chroma |
+|---|---:|---:|---:|---:|
+| TSX | 170µs/line | 18.4µs/line | 9.2x | 23.4KB / 8.2KB |
+| HTML | 134µs/line | 6.0µs/line | 22.3x | 21.4KB / 3.8KB |
+| Go | 48.9µs/line | 23.1µs/line | 2.1x | 13.4KB / 6.3KB |
+| Markdown | 59.6µs/line | 25.3µs/line | 2.4x | 12.0KB / 9.2KB |
+
+The corresponding throughput was roughly 5.9k/54.3k TSX lines per second,
+7.5k/166.7k HTML, 20.4k/43.3k Go, and 16.8k/39.5k Markdown. TSX had a visible
+warm-up split: settled samples were about 165–170µs/line, while early samples
+were 315–475µs/line.
+
+These inputs were deliberately small regression fixtures repeated in memory:
+428-byte TSX and 444-byte HTML seeds became about 39KB/2,000-line documents;
+the 225-byte Go seed became 32KB/2,000 lines; and the 205-byte Markdown seed
+became 17KB/1,000 lines. The result is useful as an initial engine baseline,
+but the next benchmark should use non-repeated 100KB–5MB Go, JavaScript, TSX,
+HTML, C, and Python files and report MB/s plus retained memory.
+
+### 2026-09-25: profiler findings
+
+- The bottleneck is regexp2 plus scanner fan-out: 94.5% of TSX and 91.3% of
+  HTML CPU passes through `OnigScanner.FindNextMatch`, which performs about 127
+  and 88 independent regex searches per line respectively. The regexp2
+  interpreter itself accounts for about 61% of CPU; timeout checks are only
+  about 5%, so removing the safety limit would not solve the problem.
+- A 2,000-line pass allocates 46.9MB/485,651 objects for TSX and
+  42.8MB/484,818 for HTML. Regexp2 is responsible for 82% and 76% of those
+  bytes, primarily because every attempted pattern creates public match-text,
+  match, group, and capture objects even though textmate-go keeps only rune
+  offsets. Token and scope construction is a secondary 5–8% cost.
+- Sampled live heap after warming was about 22MB for TSX and 16MB for HTML,
+  mostly regexp2 runner stacks, scratch space, and compiled regex programs held
+  by per-pattern pools.
+- First optimization to try: add a text-free/index-oriented regexp2 API and
+  reuse match storage. Then remove redundant token/scope copies, replace the
+  hot regex-variant mutex/map with fixed storage, bound later searches after an
+  earlier candidate is found, and cache a small number of resolved TSX end
+  patterns. Replacing the regex engine remains a later, higher-risk option.
+
+### 2026-09-25: capture-index optimization
+
+A local regexp2 v2.8.0 branch added a capture-index API that keeps match state
+on its pooled runner and returns only caller-owned rune ranges. textmate-go
+reuses temporary index buffers and no longer constructs regexp2's public text,
+match, group, and repeated-capture objects. Full Go/race/vet/pure-Go gates and
+the 48-case differential fuzz gate remain green.
+
+| Input | Before | After | Time | Allocated bytes | Allocation count |
+|---|---:|---:|---:|---:|---:|
+| TSX | 185.2µs/line | 150.3µs/line | -18.8% | -82.1% | -72.1% |
+| HTML | 147.3µs/line | 116.5µs/line | -20.9% | -77.2% | -61.9% |
+| Go | 48.5µs/line | 37.5µs/line | -22.6% | -83.7% | -73.9% |
+| Markdown | 57.9µs/line | 40.3µs/line | -30.4% | -81.7% | -71.7% |
+
+The change removes most transient allocation pressure, but regexp execution
+still dominates CPU and TSX still shows one slow early sample. The next CPU
+target is reducing the 88–127 separate pattern searches per line. The current
+module uses a sibling `../regexp2` replacement; publishing requires upstreaming
+the API or hosting a durable fork.
