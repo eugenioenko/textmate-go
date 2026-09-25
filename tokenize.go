@@ -32,6 +32,27 @@ type tokenHandler interface {
 type tokenizeStringResult struct {
 	stack        *StateStack
 	stoppedEarly bool
+	stoppedAt    int
+}
+
+type tokenizationBudget struct {
+	deadline time.Time
+	limited  bool
+	stop     func() bool
+}
+
+func newTokenizationBudget(limit time.Duration) tokenizationBudget {
+	if limit <= 0 {
+		return tokenizationBudget{}
+	}
+	return tokenizationBudget{deadline: time.Now().Add(limit), limited: true}
+}
+
+func (b tokenizationBudget) exceeded() bool {
+	if b.stop != nil {
+		return b.stop()
+	}
+	return b.limited && !time.Now().Before(b.deadline)
 }
 
 // tokenizeString is the direct Go counterpart of vscode-textmate's
@@ -47,24 +68,55 @@ func tokenizeString(
 	checkWhileConditions bool,
 	timeLimit time.Duration,
 ) tokenizeStringResult {
+	return tokenizeStringWithBudget(
+		grammar,
+		lineText,
+		isFirstLine,
+		linePos,
+		stack,
+		handler,
+		checkWhileConditions,
+		newTokenizationBudget(timeLimit),
+	)
+}
+
+func tokenizeStringWithBudget(
+	grammar tokenizerGrammar,
+	lineText *oniguruma.String,
+	isFirstLine bool,
+	linePos int,
+	stack *StateStack,
+	handler tokenHandler,
+	checkWhileConditions bool,
+	budget tokenizationBudget,
+) tokenizeStringResult {
 	lineLength := lineText.Len()
 	anchorPosition := -1
 
+	if budget.exceeded() {
+		return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
+	}
+
 	if checkWhileConditions {
-		checked := checkWhile(grammar, lineText, isFirstLine, linePos, stack, handler)
+		checked := checkWhileWithBudget(grammar, lineText, isFirstLine, linePos, stack, handler, budget)
 		stack = checked.stack
 		linePos = checked.linePos
 		isFirstLine = checked.isFirstLine
 		anchorPosition = checked.anchorPosition
+		if checked.stoppedEarly {
+			return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
+		}
 	}
 
-	startTime := time.Now()
 	for {
-		if timeLimit > 0 && time.Since(startTime) > timeLimit {
-			return tokenizeStringResult{stack: stack, stoppedEarly: true}
+		if budget.exceeded() {
+			return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
 		}
 
 		matched := matchRuleOrInjections(grammar, lineText, isFirstLine, linePos, stack, anchorPosition)
+		if budget.exceeded() {
+			return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
+		}
 		if matched == nil || len(matched.captureIndices) == 0 {
 			handler.handle(stack.contentNameScopesList, lineLength)
 			return tokenizeStringResult{stack: stack}
@@ -86,7 +138,7 @@ func tokenizeString(
 
 			handler.handle(stack.contentNameScopesList, wholeMatch.Start)
 			stack = stack.withContentNameScopesList(stack.nameScopesList)
-			handleCaptures(grammar, lineText, isFirstLine, stack, handler, poppedRule.endCaptures, captures)
+			handleCapturesWithBudget(grammar, lineText, isFirstLine, stack, handler, poppedRule.endCaptures, captures, budget)
 			handler.handle(stack.contentNameScopesList, wholeMatch.End)
 
 			popped := stack
@@ -126,7 +178,7 @@ func tokenizeString(
 
 			switch typedRule := matchedRule.(type) {
 			case *beginEndRule:
-				handleCaptures(grammar, lineText, isFirstLine, stack, handler, typedRule.beginCaptures, captures)
+				handleCapturesWithBudget(grammar, lineText, isFirstLine, stack, handler, typedRule.beginCaptures, captures, budget)
 				handler.handle(stack.contentNameScopesList, wholeMatch.End)
 				anchorPosition = wholeMatch.End
 
@@ -149,7 +201,7 @@ func tokenizeString(
 				}
 
 			case *beginWhileRule:
-				handleCaptures(grammar, lineText, isFirstLine, stack, handler, typedRule.beginCaptures, captures)
+				handleCapturesWithBudget(grammar, lineText, isFirstLine, stack, handler, typedRule.beginCaptures, captures, budget)
 				handler.handle(stack.contentNameScopesList, wholeMatch.End)
 				anchorPosition = wholeMatch.End
 
@@ -172,7 +224,7 @@ func tokenizeString(
 				}
 
 			case *matchRule:
-				handleCaptures(grammar, lineText, isFirstLine, stack, handler, typedRule.captures, captures)
+				handleCapturesWithBudget(grammar, lineText, isFirstLine, stack, handler, typedRule.captures, captures, budget)
 				handler.handle(stack.contentNameScopesList, wholeMatch.End)
 				stack = stack.pop()
 
@@ -205,6 +257,7 @@ type whileCheckResult struct {
 	linePos        int
 	anchorPosition int
 	isFirstLine    bool
+	stoppedEarly   bool
 }
 
 // checkWhile walks active begin/while rules from the bottom of the stack to
@@ -216,6 +269,26 @@ func checkWhile(
 	linePos int,
 	stack *StateStack,
 	handler tokenHandler,
+) whileCheckResult {
+	return checkWhileWithBudget(
+		grammar,
+		lineText,
+		isFirstLine,
+		linePos,
+		stack,
+		handler,
+		tokenizationBudget{},
+	)
+}
+
+func checkWhileWithBudget(
+	grammar tokenizerGrammar,
+	lineText *oniguruma.String,
+	isFirstLine bool,
+	linePos int,
+	stack *StateStack,
+	handler tokenHandler,
+	budget tokenizationBudget,
 ) whileCheckResult {
 	anchorPosition := -1
 	if stack != nil && stack.beginRuleCapturedEOL {
@@ -234,6 +307,12 @@ func checkWhile(
 	}
 
 	for index := len(whileRules) - 1; index >= 0; index-- {
+		if budget.exceeded() {
+			return whileCheckResult{
+				stack: stack, linePos: linePos, anchorPosition: anchorPosition,
+				isFirstLine: isFirstLine, stoppedEarly: true,
+			}
+		}
 		active := whileRules[index]
 		scanner := active.rule.compileWhileAG(
 			grammar,
@@ -242,6 +321,12 @@ func checkWhile(
 			linePos == anchorPosition,
 		)
 		matched := scanner.findNextMatch(lineText, linePos, oniguruma.FindOptionNone)
+		if budget.exceeded() {
+			return whileCheckResult{
+				stack: stack, linePos: linePos, anchorPosition: anchorPosition,
+				isFirstLine: isFirstLine, stoppedEarly: true,
+			}
+		}
 		if matched == nil || matched.ruleID != whileRuleID {
 			stack = active.stack.pop()
 			break
@@ -252,7 +337,7 @@ func checkWhile(
 		}
 		wholeMatch := matched.captureIndices[0]
 		handler.handle(active.stack.contentNameScopesList, wholeMatch.Start)
-		handleCaptures(
+		handleCapturesWithBudget(
 			grammar,
 			lineText,
 			isFirstLine,
@@ -260,6 +345,7 @@ func checkWhile(
 			handler,
 			active.rule.whileCaptures,
 			matched.captureIndices,
+			budget,
 		)
 		handler.handle(active.stack.contentNameScopesList, wholeMatch.End)
 		anchorPosition = wholeMatch.End
@@ -394,6 +480,28 @@ func handleCaptures(
 	captureRules []*captureRule,
 	captureIndices []oniguruma.Capture,
 ) {
+	handleCapturesWithBudget(
+		grammar,
+		lineText,
+		isFirstLine,
+		stack,
+		handler,
+		captureRules,
+		captureIndices,
+		tokenizationBudget{},
+	)
+}
+
+func handleCapturesWithBudget(
+	grammar tokenizerGrammar,
+	lineText *oniguruma.String,
+	isFirstLine bool,
+	stack *StateStack,
+	handler tokenHandler,
+	captureRules []*captureRule,
+	captureIndices []oniguruma.Capture,
+	budget tokenizationBudget,
+) {
 	if len(captureRules) == 0 || len(captureIndices) == 0 {
 		return
 	}
@@ -459,7 +567,7 @@ func handleCaptures(
 			}
 			if end >= 0 {
 				captureText := oniguruma.NewString(string(lineRunes[:end]))
-				tokenizeString(
+				tokenizeStringWithBudget(
 					grammar,
 					captureText,
 					isFirstLine && capture.Start == 0,
@@ -467,7 +575,7 @@ func handleCaptures(
 					captureStack,
 					handler,
 					false,
-					0,
+					budget,
 				)
 			}
 			continue

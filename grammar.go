@@ -3,7 +3,6 @@ package textmate
 import (
 	"sort"
 	"sync"
-	"time"
 	"unicode/utf8"
 
 	"github.com/eugenioenko/textmate-go/oniguruma"
@@ -21,7 +20,12 @@ type Token struct {
 type LineResult struct {
 	Tokens    []Token
 	RuleStack *StateStack
-	Stopped   bool
+	// Stopped remains the compatibility signal for an incomplete parse.
+	Stopped bool
+	// StoppedReason is StopReasonNone when Stopped is false.
+	StoppedReason StopReason
+	// StoppedAt is the first unparsed rune offset when Stopped is true.
+	StoppedAt int
 }
 
 // Grammar is a compiled TextMate grammar. Compilation remains lazy: rules and
@@ -77,7 +81,18 @@ func newGrammar(
 // TokenizeLine tokenizes line and returns immutable state to pass to the next
 // call. A nil state and InitialState both begin a new document.
 func (g *Grammar) TokenizeLine(line string, prev *StateStack) LineResult {
-	return g.tokenizeLine(line, prev, 0)
+	return g.TokenizeLineWithOptions(line, prev, TokenizeOptions{})
+}
+
+// TokenizeLineWithOptions tokenizes line with optional soft time and line-size
+// limits. StoppedAt is the first unparsed rune offset when Stopped is true.
+// See TokenizeOptions for the precise limit semantics.
+func (g *Grammar) TokenizeLineWithOptions(
+	line string,
+	prev *StateStack,
+	options TokenizeOptions,
+) LineResult {
+	return g.tokenizeLineWithOptions(line, prev, options)
 }
 
 // Diagnostics returns regex translation, compilation, and match diagnostics
@@ -117,15 +132,16 @@ func (g *Grammar) addRegexDiagnostic(diagnostic oniguruma.Diagnostic) {
 	g.diagnostics = append(g.diagnostics, diagnostic)
 }
 
-func (g *Grammar) tokenizeLine(
+func (g *Grammar) tokenizeLineWithOptions(
 	line string,
 	prev *StateStack,
-	timeLimit time.Duration,
+	options TokenizeOptions,
 ) LineResult {
 	if g == nil {
 		return LineResult{}
 	}
 
+	budget := newTokenizationBudget(options.TimeLimit)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -149,9 +165,19 @@ func (g *Grammar) tokenizeLine(
 	}
 
 	lineLength := utf8.RuneCountInString(line)
+	if (options.MaxLineBytes > 0 && len(line) > options.MaxLineBytes) ||
+		(options.MaxLineRunes > 0 && lineLength > options.MaxLineRunes) {
+		handler := &lineTokenHandler{}
+		return stoppedLineResult(handler, prev, lineLength, StopReasonLineLimit, 0)
+	}
+	if budget.exceeded() {
+		handler := &lineTokenHandler{}
+		return stoppedLineResult(handler, prev, lineLength, StopReasonTimeLimit, 0)
+	}
+
 	input := oniguruma.NewString(line + "\n")
 	handler := &lineTokenHandler{}
-	result := tokenizeString(
+	result := tokenizeStringWithBudget(
 		g,
 		input,
 		isFirstLine,
@@ -159,14 +185,42 @@ func (g *Grammar) tokenizeLine(
 		prev,
 		handler,
 		true,
-		timeLimit,
+		budget,
 	)
+	if result.stoppedAt > lineLength {
+		result.stoppedAt = lineLength
+	}
 
 	return LineResult{
-		Tokens:    handler.result(result.stack, lineLength),
-		RuleStack: result.stack,
-		Stopped:   result.stoppedEarly,
+		Tokens:        handler.result(result.stack, lineLength),
+		RuleStack:     result.stack,
+		Stopped:       result.stoppedEarly,
+		StoppedReason: stopReason(result.stoppedEarly, StopReasonTimeLimit),
+		StoppedAt:     result.stoppedAt,
 	}
+}
+
+func stoppedLineResult(
+	handler *lineTokenHandler,
+	stack *StateStack,
+	lineLength int,
+	reason StopReason,
+	stoppedAt int,
+) LineResult {
+	return LineResult{
+		Tokens:        handler.result(stack, lineLength),
+		RuleStack:     stack,
+		Stopped:       true,
+		StoppedReason: reason,
+		StoppedAt:     stoppedAt,
+	}
+}
+
+func stopReason(stopped bool, reason StopReason) StopReason {
+	if !stopped {
+		return StopReasonNone
+	}
+	return reason
 }
 
 func (g *Grammar) ensureRootCompiled() {
@@ -414,6 +468,13 @@ func (h *lineTokenHandler) handle(scopes *attributedScopeStack, end int) {
 }
 
 func (h *lineTokenHandler) result(stack *StateStack, lineLength int) []Token {
+	if h.lastEnd < lineLength {
+		var scopes *attributedScopeStack
+		if stack != nil {
+			scopes = stack.contentNameScopesList
+		}
+		h.handle(scopes, lineLength)
+	}
 	result := make([]Token, 0, len(h.tokens))
 	for _, token := range h.tokens {
 		if token.Start >= lineLength {

@@ -54,6 +54,7 @@ individually compressed and loaded once on demand:
 ```go
 import (
 	"log"
+	"time"
 
 	textmate "github.com/eugenioenko/textmate-go"
 	"github.com/eugenioenko/textmate-go/grammars"
@@ -93,6 +94,35 @@ A state stack is immutable and reusable, but belongs to the grammar that
 created it. Pass `nil` or `textmate.InitialState` for the first line. Use
 `StateStack.Equal` when incremental highlighting reaches a line whose end
 state may already be current.
+
+### Tokenization limits
+
+Editors can bound work on untrusted, generated, or minified input without
+changing the behavior of `TokenizeLine`:
+
+```go
+result := grammar.TokenizeLineWithOptions(line, state, textmate.TokenizeOptions{
+	MaxLineBytes: 20_000,
+	MaxLineRunes: 10_000,
+	TimeLimit:    5 * time.Millisecond,
+})
+if result.Stopped {
+	log.Printf("tokenization stopped at rune %d: %s", result.StoppedAt, result.StoppedReason)
+}
+```
+
+Zero or negative limits are unlimited. A line that exceeds either size cap is
+not parsed: it receives one fallback token with the incoming scopes, its reset
+incoming state is returned unchanged, and `StoppedAt` is zero. Size caps are
+checked before allocating the newline-appended regexp input and rune buffer.
+
+`TimeLimit` is deliberately a soft overall budget. It includes lock wait, lazy
+root compilation, and begin/while setup, and is checked between regexp
+searches. The library cannot interrupt an in-flight regexp search, so a call
+can return after the requested duration. A partial result reports the next
+unparsed rune in `StoppedAt`, carries the state reached at the last completed
+match boundary, and gives the unparsed tail a fallback token so the returned
+tokens still cover the complete line.
 
 See [`grammars/README.md`](grammars/README.md) for the curated selection,
 regeneration instructions, source/license manifest, and all-versus-curated size
