@@ -1,6 +1,7 @@
 package chromabench
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,17 +15,29 @@ import (
 )
 
 type corpusCase struct {
-	name     string
-	filename string
-	fixture  string
-	lines    int
+	Name      string `json:"name"`
+	Filename  string `json:"filename"`
+	Fixture   string `json:"fixture"`
+	Lines     int    `json:"lines"`
+	ScopeName string `json:"scopeName"`
 }
 
-var corpusCases = []corpusCase{
-	{name: "TSX_2000", filename: "component.tsx", fixture: "conformance/corpus/web/component.tsx", lines: 2000},
-	{name: "HTML_2000", filename: "multiline.html", fixture: "conformance/corpus/web/multiline.html", lines: 2000},
-	{name: "Go_2000", filename: "main.go", fixture: "conformance/corpus/general/main.go", lines: 2000},
-	{name: "Markdown_1000", filename: "article.md", fixture: "conformance/corpus/markup/article.md", lines: 1000},
+// repoRoot is relative to this package; corpus.json paths are relative to it.
+var repoRoot = filepath.Join("..", "..")
+
+func loadCorpus(tb testing.TB) []corpusCase {
+	tb.Helper()
+	data, err := os.ReadFile(filepath.Join(repoRoot, "benchmarks", "corpus.json"))
+	if err != nil {
+		tb.Fatal(err)
+	}
+	var manifest struct {
+		Cases []corpusCase `json:"cases"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		tb.Fatal(err)
+	}
+	return manifest.Cases
 }
 
 var benchmarkTokenCount int
@@ -35,16 +48,16 @@ const warmupPasses = 5
 // mode. TextMate carries state across physical lines. Chroma receives the whole
 // document because released Chroma cannot return state for a later call.
 func BenchmarkWarmWholeDocument(b *testing.B) {
-	for _, test := range corpusCases {
+	for _, test := range loadCorpus(b) {
 		lines := loadRepeatedLines(b, test)
 		document := strings.Join(lines, "\n") + "\n"
 		b.SetBytes(int64(len(document)))
 
-		b.Run(test.name, func(b *testing.B) {
+		b.Run(test.Name, func(b *testing.B) {
 			b.Run("textmate-go", func(b *testing.B) {
 				registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
 				b.Cleanup(registry.Dispose)
-				grammar, err := registry.LoadGrammar(grammars.ScopeForFilename(test.filename))
+				grammar, err := registry.LoadGrammar(test.ScopeName)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -60,9 +73,9 @@ func BenchmarkWarmWholeDocument(b *testing.B) {
 			})
 
 			b.Run("chroma-v2.24.1", func(b *testing.B) {
-				lexer := chroma.Coalesce(lexers.Match(test.filename))
+				lexer := chroma.Coalesce(lexers.Match(test.Filename))
 				if lexer == nil {
-					b.Fatalf("no Chroma lexer for %s", test.filename)
+					b.Fatalf("no Chroma lexer for %s", test.Filename)
 				}
 				warmChromaDocument(b, lexer, document)
 
@@ -84,13 +97,13 @@ func BenchmarkWarmWholeDocument(b *testing.B) {
 // so ttt starts Chroma at its root state for each line and separately patches
 // a small set of multiline regions.
 func BenchmarkWarmLineByLine(b *testing.B) {
-	for _, test := range corpusCases {
+	for _, test := range loadCorpus(b) {
 		lines := loadRepeatedLines(b, test)
-		b.Run(test.name, func(b *testing.B) {
+		b.Run(test.Name, func(b *testing.B) {
 			b.Run("textmate-go", func(b *testing.B) {
 				registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
 				b.Cleanup(registry.Dispose)
-				grammar, err := registry.LoadGrammar(grammars.ScopeForFilename(test.filename))
+				grammar, err := registry.LoadGrammar(test.ScopeName)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -106,9 +119,9 @@ func BenchmarkWarmLineByLine(b *testing.B) {
 			})
 
 			b.Run("chroma-v2.24.1", func(b *testing.B) {
-				lexer := chroma.Coalesce(lexers.Match(test.filename))
+				lexer := chroma.Coalesce(lexers.Match(test.Filename))
 				if lexer == nil {
-					b.Fatalf("no Chroma lexer for %s", test.filename)
+					b.Fatalf("no Chroma lexer for %s", test.Filename)
 				}
 				warmChromaLines(b, lexer, lines)
 
@@ -185,13 +198,12 @@ func consumeChromaDocument(b *testing.B, lexer chroma.Lexer, document string) in
 
 func loadRepeatedLines(b *testing.B, test corpusCase) []string {
 	b.Helper()
-	root := filepath.Clean(filepath.Join("..", ".."))
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(test.fixture)))
+	data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(test.Fixture)))
 	if err != nil {
 		b.Fatal(err)
 	}
 	seed := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
-	lines := make([]string, test.lines)
+	lines := make([]string, test.Lines)
 	for index := range lines {
 		lines[index] = seed[index%len(seed)]
 	}

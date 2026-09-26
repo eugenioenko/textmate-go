@@ -60,6 +60,8 @@ type Grammar struct {
 
 	scopeStacks scopeStackInterner
 	stateStacks stateStackInterner
+
+	patterns *oniguruma.PatternCache
 }
 
 // newGrammar constructs the integration object used by Registry. The raw
@@ -84,7 +86,12 @@ func newGrammar(
 		raw:              initGrammar(raw, nil),
 		ruleFactory:      newRuleFactory(),
 		diagnosticSet:    make(map[grammarDiagnosticKey]struct{}),
+		patterns:         oniguruma.NewPatternCache(0),
 	}
+}
+
+func (g *Grammar) patternCache() *oniguruma.PatternCache {
+	return g.patterns
 }
 
 // TokenizeLine tokenizes line and returns immutable state to pass to the next

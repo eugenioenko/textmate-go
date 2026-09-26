@@ -123,6 +123,7 @@ type ScannerOption func(*scannerConfig)
 type scannerConfig struct {
 	matchTimeout      time.Duration
 	diagnosticHandler func(Diagnostic)
+	patternCache      *PatternCache
 }
 
 // WithMatchTimeout sets the limit for each pattern evaluation. Non-positive
@@ -144,9 +145,14 @@ func WithDiagnosticHandler(handler func(Diagnostic)) ScannerOption {
 	}
 }
 
-// OnigScanner is the regexp2-backed Scanner implementation.
+// OnigScanner is the regexp2-backed Scanner implementation. Searches on one
+// scanner are serialized; distinct scanners may search concurrently.
 type OnigScanner struct {
 	patterns []*compiledPattern
+
+	mu       sync.Mutex
+	searches [][variantCount]cachedSearch
+	scratch  []regexp2.CaptureIndex
 
 	diagnosticsMu sync.Mutex
 	diagnostics   []Diagnostic
@@ -159,6 +165,8 @@ type diagnosticKey struct {
 	index int
 }
 
+// compiledPattern is immutable after construction so a PatternCache can share
+// it between scanners.
 type compiledPattern struct {
 	source     string
 	translated string
@@ -167,14 +175,10 @@ type compiledPattern struct {
 	hasG       bool
 	hasZ       bool
 	broken     bool
-
-	mu       sync.Mutex
-	variants map[uint8]*regexp2.Regexp
-
-	searchMu sync.Mutex
-	searches [8]cachedSearch
-
-	captureIndices sync.Pool
+	variants   [variantCount]*regexp2.Regexp
+	// compileDiagnostics are replayed with the pattern's index in each scanner
+	// that uses it.
+	compileDiagnostics []Diagnostic
 }
 
 type cachedSearch struct {
@@ -189,7 +193,60 @@ const (
 	variantAllowA uint8 = 1 << iota
 	variantAllowG
 	variantAllowZ
+	variantCount = 8
 )
+
+type patternCacheKey struct {
+	source  string
+	timeout time.Duration
+}
+
+// PatternCache shares translated and compiled patterns between scanners.
+// TextMate rules with back-referenced end patterns rebuild their scanner
+// whenever the resolved end changes; with a cache only the new end pattern is
+// compiled. A PatternCache is safe for concurrent use.
+type PatternCache struct {
+	mu       sync.Mutex
+	patterns map[patternCacheKey]*compiledPattern
+	limit    int
+}
+
+// NewPatternCache returns a cache that holds at most limit patterns, dropping
+// all entries when full. A non-positive limit selects 8192.
+func NewPatternCache(limit int) *PatternCache {
+	if limit <= 0 {
+		limit = 8192
+	}
+	return &PatternCache{patterns: make(map[patternCacheKey]*compiledPattern), limit: limit}
+}
+
+func (c *PatternCache) get(source string, timeout time.Duration) *compiledPattern {
+	if c == nil {
+		return newCompiledPattern(source, timeout)
+	}
+	key := patternCacheKey{source: source, timeout: timeout}
+	c.mu.Lock()
+	pattern, ok := c.patterns[key]
+	c.mu.Unlock()
+	if ok {
+		return pattern
+	}
+	pattern = newCompiledPattern(source, timeout)
+	c.mu.Lock()
+	if len(c.patterns) >= c.limit {
+		clear(c.patterns)
+	}
+	c.patterns[key] = pattern
+	c.mu.Unlock()
+	return pattern
+}
+
+// WithPatternCache shares compiled patterns through cache.
+func WithPatternCache(cache *PatternCache) ScannerOption {
+	return func(c *scannerConfig) {
+		c.patternCache = cache
+	}
+}
 
 // NewScanner translates and compiles patterns eagerly. A bad pattern is kept
 // at its original index as a never-match entry and exposed through Diagnostics.
@@ -203,58 +260,60 @@ func NewScanner(sources []string, options ...ScannerOption) *OnigScanner {
 
 	scanner := &OnigScanner{
 		patterns:      make([]*compiledPattern, len(sources)),
+		searches:      make([][variantCount]cachedSearch, len(sources)),
 		diagnosticSet: make(map[diagnosticKey]struct{}),
 		diagnosticFn:  config.diagnosticHandler,
 	}
 	for i, source := range sources {
-		translated, err := translatePattern(translateInlineOptions(source))
-		_, partiallyTranslated := err.(*partialTranslationError)
-		checkSource := stripSyntaxComments(source)
-		if hasClassIntersection(checkSource) {
-			err = fmt.Errorf("oniguruma character-class intersection is not supported")
-			partiallyTranslated = false
-		}
-		if duplicate := findDuplicateNamedGroup(checkSource); duplicate != "" {
-			err = fmt.Errorf("duplicate named capture %q is not supported", duplicate)
-			partiallyTranslated = false
-		}
-		pattern := &compiledPattern{
-			source:     source,
-			translated: translated,
-			timeout:    config.matchTimeout,
-			variants:   make(map[uint8]*regexp2.Regexp),
-		}
+		pattern := config.patternCache.get(source, config.matchTimeout)
 		scanner.patterns[i] = pattern
-		if err != nil {
-			scanner.addDiagnostic(Diagnostic{
-				Kind: DiagnosticUnsupportedSyntax, PatternIndex: i,
-				Pattern: source, Translated: translated, Message: err.Error(),
-			})
-			if !partiallyTranslated {
-				pattern.broken = true
-				continue
-			}
-		}
-		pattern.hasA = containsAnchor(translated, 'A')
-		pattern.hasG = containsAnchor(translated, 'G')
-		pattern.hasZ = containsAnchor(translated, 'z') || containsAnchor(translated, 'Z')
-		if _, err := pattern.compile(true, true, true); err != nil {
-			pattern.broken = true
-			scanner.addDiagnostic(Diagnostic{
-				Kind: DiagnosticCompileError, PatternIndex: i,
-				Pattern: source, Translated: translated, Message: err.Error(),
-			})
-			continue
-		}
-		if err := pattern.compileAnchorVariants(); err != nil {
-			pattern.broken = true
-			scanner.addDiagnostic(Diagnostic{
-				Kind: DiagnosticCompileError, PatternIndex: i,
-				Pattern: source, Translated: translated, Message: err.Error(),
-			})
+		for _, diagnostic := range pattern.compileDiagnostics {
+			diagnostic.PatternIndex = i
+			scanner.addDiagnostic(diagnostic)
 		}
 	}
 	return scanner
+}
+
+func newCompiledPattern(source string, timeout time.Duration) *compiledPattern {
+	translated, err := translatePattern(translateInlineOptions(source))
+	_, partiallyTranslated := err.(*partialTranslationError)
+	checkSource := stripSyntaxComments(source)
+	if hasClassIntersection(checkSource) {
+		err = fmt.Errorf("oniguruma character-class intersection is not supported")
+		partiallyTranslated = false
+	}
+	if duplicate := findDuplicateNamedGroup(checkSource); duplicate != "" {
+		err = fmt.Errorf("duplicate named capture %q is not supported", duplicate)
+		partiallyTranslated = false
+	}
+	pattern := &compiledPattern{
+		source:     source,
+		translated: translated,
+		timeout:    timeout,
+	}
+	if err != nil {
+		pattern.compileDiagnostics = append(pattern.compileDiagnostics, Diagnostic{
+			Kind: DiagnosticUnsupportedSyntax, Pattern: source,
+			Translated: translated, Message: err.Error(),
+		})
+		if !partiallyTranslated {
+			pattern.broken = true
+			return pattern
+		}
+	}
+	pattern.hasA = containsAnchor(translated, 'A')
+	pattern.hasG = containsAnchor(translated, 'G')
+	pattern.hasZ = containsAnchor(translated, 'z') || containsAnchor(translated, 'Z')
+	if err := pattern.compileVariants(); err != nil {
+		pattern.broken = true
+		pattern.variants = [variantCount]*regexp2.Regexp{}
+		pattern.compileDiagnostics = append(pattern.compileDiagnostics, Diagnostic{
+			Kind: DiagnosticCompileError, Pattern: source,
+			Translated: translated, Message: err.Error(),
+		})
+	}
+	return pattern
 }
 
 // Len returns the number of source patterns, including degraded patterns.
@@ -305,14 +364,20 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 	allowG := opts&FindOptionNotBeginPosition == 0
 	allowZ := opts&FindOptionNotEndString == 0
 
-	var best *Match
+	s.mu.Lock()
+	var diagnostics []Diagnostic
+	bestIndex := -1
+	var bestCaptures []Capture
 	for index, pattern := range s.patterns {
+		if pattern.broken {
+			continue
+		}
 		variant := pattern.variantKey(allowA, allowG, allowZ)
 		maxStartExclusive := -1
-		if best != nil {
+		if bestCaptures != nil {
 			// Patterns are visited in tie-breaking order. Once an earlier pattern
 			// has matched at q, a later one can only win by starting before q.
-			maxStartExclusive = best.Captures[0].Start
+			maxStartExclusive = bestCaptures[0].Start
 		}
 		// A failed unanchored search from p cannot succeed from a later
 		// position on the same input. This is not true for \G: its meaning is
@@ -321,21 +386,25 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 		var captures []Capture
 		var err error
 		if !pattern.hasG {
-			if cached, failed, ok := pattern.cachedSearch(input.id, variant, start); ok {
+			cache := &s.searches[index][variant]
+			if cached, failed, ok := cache.lookup(input.id, start); ok {
 				if failed {
 					continue
 				}
 				captures = cached
 			} else {
-				captures, err = pattern.match(input.runes, start, maxStartExclusive, allowA, allowG, allowZ)
+				captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive)
 				// A bounded miss only proves that the pattern cannot beat this
 				// call's winner. It may still match later on the same input.
 				if err == nil && (captures != nil || maxStartExclusive < 0) {
-					pattern.rememberSearch(input.id, variant, start, captures)
+					*cache = cachedSearch{
+						inputID: input.id, start: start, captures: captures,
+						failed: captures == nil, valid: true,
+					}
 				}
 			}
 		} else {
-			captures, err = pattern.match(input.runes, start, maxStartExclusive, allowA, allowG, allowZ)
+			captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive)
 		}
 		if err != nil {
 			kind := DiagnosticMatchError
@@ -344,7 +413,7 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 				kind = DiagnosticMatchTimeout
 				message = fmt.Sprintf("match exceeded the configured %s per-pattern timeout", pattern.timeout)
 			}
-			s.addDiagnostic(Diagnostic{
+			diagnostics = append(diagnostics, Diagnostic{
 				Kind: kind, PatternIndex: index,
 				Pattern: pattern.source, Translated: pattern.translated, Message: message,
 			})
@@ -353,49 +422,39 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 		if captures == nil {
 			continue
 		}
-		if best == nil || captures[0].Start < best.Captures[0].Start ||
-			captures[0].Start == best.Captures[0].Start && index < best.Index {
-			best = &Match{Index: index, Captures: captures}
+		if bestCaptures == nil || captures[0].Start < bestCaptures[0].Start {
+			bestIndex, bestCaptures = index, captures
 			if captures[0].Start == start {
 				break
 			}
 		}
 	}
-	return best
+	s.mu.Unlock()
+	for _, diagnostic := range diagnostics {
+		s.addDiagnostic(diagnostic)
+	}
+	if bestCaptures == nil {
+		return nil
+	}
+	return &Match{Index: bestIndex, Captures: bestCaptures}
 }
 
-// cachedSearch reuses the earliest result of a previous search when the new
-// start has not advanced past it. A regexp search from p that found its first
-// match at q has the same answer from every p' in [p,q]. A failed search is
-// reusable for every later start. Callers exclude \G patterns because their
-// anchor moves with the search start.
-func (p *compiledPattern) cachedSearch(inputID uint64, variant uint8, start int) ([]Capture, bool, bool) {
-	p.searchMu.Lock()
-	defer p.searchMu.Unlock()
-	cached := p.searches[variant]
-	if !cached.valid || cached.inputID != inputID || start < cached.start {
+// lookup reuses the earliest result of a previous search when the new start
+// has not advanced past it. A regexp search from p that found its first match
+// at q has the same answer from every p' in [p,q]. A failed search is reusable
+// for every later start. Callers exclude \G patterns because their anchor
+// moves with the search start.
+func (c *cachedSearch) lookup(inputID uint64, start int) ([]Capture, bool, bool) {
+	if !c.valid || c.inputID != inputID || start < c.start {
 		return nil, false, false
 	}
-	if cached.failed {
+	if c.failed {
 		return nil, true, true
 	}
-	if len(cached.captures) != 0 && start <= cached.captures[0].Start {
-		return cached.captures, false, true
+	if len(c.captures) != 0 && start <= c.captures[0].Start {
+		return c.captures, false, true
 	}
 	return nil, false, false
-
-}
-
-func (p *compiledPattern) rememberSearch(inputID uint64, variant uint8, start int, captures []Capture) {
-	p.searchMu.Lock()
-	defer p.searchMu.Unlock()
-	p.searches[variant] = cachedSearch{
-		inputID:  inputID,
-		start:    start,
-		captures: captures,
-		failed:   captures == nil,
-		valid:    true,
-	}
 }
 
 func (p *compiledPattern) variantKey(allowA, allowG, allowZ bool) uint8 {
@@ -412,82 +471,54 @@ func (p *compiledPattern) variantKey(allowA, allowG, allowZ bool) uint8 {
 	return key
 }
 
-func (p *compiledPattern) compile(allowA, allowG, allowZ bool) (*regexp2.Regexp, error) {
-	if p.broken {
-		return nil, nil
-	}
-	key := p.variantKey(allowA, allowG, allowZ)
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if regex, exists := p.variants[key]; exists {
-		return regex, nil
-	}
-	source := p.translated
-	if p.hasA && !allowA {
-		source = neutralizeAnchors(source, "A")
-	}
-	if p.hasG && !allowG {
-		source = neutralizeAnchors(source, "G")
-	}
-	if p.hasZ && !allowZ {
-		source = neutralizeAnchors(source, "zZ")
-	}
-	regex, err := regexp2.Compile(source, regexp2.Multiline, regexp2.OptionMaintainCaptureOrder())
-	if err != nil {
-		return nil, err
-	}
-	regex.MatchTimeout = p.timeout
-	p.variants[key] = regex
-	return regex, nil
-}
-
-func (p *compiledPattern) compileAnchorVariants() error {
-	allowAValues := []bool{true}
-	allowGValues := []bool{true}
-	allowZValues := []bool{true}
-	if p.hasA {
-		allowAValues = append(allowAValues, false)
-	}
-	if p.hasG {
-		allowGValues = append(allowGValues, false)
-	}
-	if p.hasZ {
-		allowZValues = append(allowZValues, false)
-	}
-	for _, allowA := range allowAValues {
-		for _, allowG := range allowGValues {
-			for _, allowZ := range allowZValues {
-				if _, err := p.compile(allowA, allowG, allowZ); err != nil {
-					return err
-				}
-			}
+// compileVariants fills every slot of variants: a slot whose anchor the
+// pattern lacks aliases the slot where that anchor is allowed.
+func (p *compiledPattern) compileVariants() error {
+	for key := range uint8(variantCount) {
+		allowA := key&variantAllowA != 0
+		allowG := key&variantAllowG != 0
+		allowZ := key&variantAllowZ != 0
+		canonical := p.variantKey(allowA, allowG, allowZ)
+		if canonical != key {
+			continue
 		}
+		source := p.translated
+		if p.hasA && !allowA {
+			source = neutralizeAnchors(source, "A")
+		}
+		if p.hasG && !allowG {
+			source = neutralizeAnchors(source, "G")
+		}
+		if p.hasZ && !allowZ {
+			source = neutralizeAnchors(source, "zZ")
+		}
+		regex, err := regexp2.Compile(source, regexp2.Multiline, regexp2.OptionMaintainCaptureOrder())
+		if err != nil {
+			return err
+		}
+		regex.MatchTimeout = p.timeout
+		p.variants[key] = regex
+	}
+	for key := range uint8(variantCount) {
+		allowA := key&variantAllowA != 0
+		allowG := key&variantAllowG != 0
+		allowZ := key&variantAllowZ != 0
+		p.variants[key] = p.variants[p.variantKey(allowA, allowG, allowZ)]
 	}
 	return nil
 }
 
-func (p *compiledPattern) match(text []rune, start, maxStartExclusive int, allowA, allowG, allowZ bool) ([]Capture, error) {
-	regex, err := p.compile(allowA, allowG, allowZ)
-	if err != nil || regex == nil {
-		return nil, err
-	}
-	scratch, _ := p.captureIndices.Get().(*[]regexp2.CaptureIndex)
-	var destination []regexp2.CaptureIndex
-	if scratch != nil {
-		destination = *scratch
-	}
+// match must be called with s.mu held because it reuses s.scratch.
+func (s *OnigScanner) match(regex *regexp2.Regexp, text []rune, start, maxStartExclusive int) ([]Capture, error) {
 	var indices []regexp2.CaptureIndex
+	var err error
 	if maxStartExclusive < 0 {
-		indices, err = regex.FindRunesCaptureIndicesStartingAt(text, start, destination)
+		indices, err = regex.FindRunesCaptureIndicesStartingAt(text, start, s.scratch[:0])
 	} else {
-		indices, err = regex.FindRunesCaptureIndicesStartingAtBefore(text, start, maxStartExclusive, destination)
+		indices, err = regex.FindRunesCaptureIndicesStartingAtBefore(text, start, maxStartExclusive, s.scratch[:0])
 	}
-	if cap(indices) != 0 {
-		if scratch == nil {
-			scratch = new([]regexp2.CaptureIndex)
-		}
-		*scratch = indices[:0]
-		defer p.captureIndices.Put(scratch)
+	if cap(indices) > cap(s.scratch) {
+		s.scratch = indices[:0]
 	}
 	if err != nil || len(indices) == 0 {
 		return nil, err

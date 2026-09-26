@@ -387,3 +387,119 @@ while allocating more. Combining eligible patterns into one alternation saved
 14%/16% but was still far from the target. `regexp2cg` generated about 20MB and
 832k lines of Go for 351 TSX/HTML variants and had not compiled after 65s, so
 that experiment was stopped before runtime measurements.
+
+### 2026-09-25: closing the gap with vscode-textmate
+
+The question changed from "how far behind Chroma" to "how far behind
+vscode-textmate", since that is the same algorithm on the same grammars and
+therefore the honest target. A first three-way run (line by line, warm) put
+textmate-go 3–5x behind JavaScript: TSX 103 vs 20us/line, HTML 72 vs 25.5, Go
+37 vs 13.6, Markdown 45 vs 14.
+
+What the profile showed, in order of how much it mattered:
+
+1. **Most expensive patterns almost never match, and still cost a full line
+   scan.** Per-pattern timing on TSX showed ~146 regex searches per line; the
+   top offenders had zero hits in 4,000+ calls at 8–12us each. They start with
+   lookbehinds, lookaheads, or Unicode identifier classes, so regexp2 has no
+   first-character optimization and runs its interpreter at every position.
+   Oniguruma avoids much of this through required-literal analysis.
+2. **Backreference end patterns rebuilt whole scanners.** A rule like a JSX tag
+   whose end is `</\1>` resets its source list whenever the resolved end
+   changes, which recompiled every nested pattern with regexp2. vscode-textmate
+   does the same, but Oniguruma compiles cheaply in C; regexp2 does not.
+3. **Per-call overhead around each search:** a mutex, a map lookup for the
+   anchor variant, and a `sync.Pool` for capture scratch on every one of those
+   ~146 calls, all redundant because `Grammar` already serializes tokenization.
+4. **regexp2 runner pool behaviour.** `sync.Pool` caches per P and is emptied
+   on every GC. After a goroutine migrates, every regex misses its private slot
+   and builds a new runner with fresh backtracking stacks, which in turn feeds
+   the GC. This showed up as bimodal benchmark results that disappeared with
+   `GOMAXPROCS=1`.
+5. Smaller items: the timeout was polled on every interpreter instruction,
+   `\b` looked up Unicode categories by name in a map even for ASCII, and scope
+   names were split with allocating `strings.Fields`/`Split` on every push.
+
+What was changed:
+
+- **regexp2 required-rune bound.** At compile time each pattern gets a small set
+  of runes such that every match contains one of them at or after its start
+  (walking concatenations, alternations, loops with min ≥ 1, groups, and
+  positive lookaheads; skipping lookbehinds, which may read text before the
+  search start; giving up on large, negated, or category sets and on
+  case-insensitive multi-character strings). Before a search, the last such
+  rune in the remaining text caps where a match may start; if there is none,
+  the search fails without running the interpreter. The check runs before a
+  runner is borrowed. This was the single largest win: TSX went from 74 to
+  26us/line. Two upstream timeout tests relied on catastrophic backtracking
+  over input that lacked the required `?`; they now include one so they still
+  exercise the timeout path.
+- **regexp2 runner slot.** One runner per `Regexp` is kept in an atomic
+  pointer in front of the pool, so it survives P migration and GC.
+- **regexp2 small fixes.** Timeout polled every 128 instructions; ASCII fast
+  path for word characters.
+- **textmate-go pattern cache.** Compiled patterns are immutable (all eight
+  anchor variants precompiled into a fixed array) and shared through a
+  per-grammar `PatternCache` keyed by source, so a rebuilt scanner only
+  compiles patterns it has not seen. Compile diagnostics are stored with the
+  pattern and replayed with the correct index for each scanner that uses it.
+- **textmate-go scanner.** The per-input search cache and capture scratch
+  moved onto the scanner, behind one lock per `FindNextMatch` instead of
+  per-pattern locks and pools.
+- **Allocations.** `FieldsSeq`/`SplitSeq` for scope names; one `Match`
+  allocation per search instead of one per improved candidate.
+
+Result, same harness, steady state (us/line):
+
+| Input | Before | After | vscode-textmate | Chroma |
+|---|---:|---:|---:|---:|
+| TSX | 103 | 25.5 | 20 | 18 |
+| HTML | 72 | 25.2 | 25.3 | 5.2 |
+| Go | 37 | 9.3 | 13.5 | 19.8 |
+| Markdown | 45 | 15.8 | 14 | 18.8 |
+
+Allocations fell about 20% (TSX 56 to 43 per line). The upstream tokenization
+suite, the corpus differential, and the differential fuzz all stay green
+against vscode-textmate, which matters because the required-rune bound prunes
+searches and a wrong set would silently change tokens.
+
+Measurement lesson: on this laptop (Ryzen 7 6800H, `powersave` governor) the
+same binary alternates between whole processes at ~25us and ~75us for TSX,
+and slow processes cluster right after a `go test` compile. Pinning, GOGC, and
+profiles showed the same code path just running slower, i.e. boost and thermal
+state, not the engine. The comparison harness therefore builds before timing
+and reports the fastest of several runs.
+
+### 2026-09-25: a broader comparison harness
+
+`make bench-compare` (`benchmarks/compare.mjs`) runs textmate-go, Chroma, and
+vscode-textmate over a shared manifest (`benchmarks/corpus.json`) and prints one
+table. The four original inputs stay on the conformance corpus for continuity;
+ten more languages use 40–90 line realistic fixtures in `benchmarks/corpus/`.
+A Go test keeps the manifest's scope names in agreement with textmate-go's
+filename table, since the JavaScript side cannot consult it.
+
+First full run (us/line; ratio is textmate-go over vscode-textmate):
+
+| Case | textmate-go | vscode-textmate | Chroma | vs JS |
+|---|---:|---:|---:|---:|
+| TSX | 33.6 | 19.8 | 16.8 | 1.70x |
+| HTML | 24.3 | 25.2 | 5.1 | 0.96x |
+| Go | 9.0 | 13.4 | 19.9 | 0.67x |
+| Markdown | 15.2 | 13.6 | 18.4 | 1.12x |
+| TypeScript | 86.4 | 55.9 | 25.4 | 1.55x |
+| JavaScript | 77.5 | 61.2 | 25.8 | 1.26x |
+| CSS | 32.5 | 70.3 | 11.0 | 0.46x |
+| JSON | 9.0 | 7.2 | 9.1 | 1.26x |
+| Python | 46.4 | 46.3 | 52.3 | 1.00x |
+| Rust | 27.6 | 30.7 | 28.9 | 0.90x |
+| Java | 60.9 | 38.2 | 34.3 | 1.60x |
+| C++ | 415.5 | 144.6 | 43.8 | 2.87x |
+| Ruby | 41.4 | 56.6 | 61.8 | 0.73x |
+| Shell | 28.0 | 30.7 | 22.1 | 0.91x |
+
+Half the languages are already at or ahead of vscode-textmate. The
+TypeScript family and Java sit around 1.3–1.7x. C++ is the clear outlier at
+2.9x JavaScript and 9.5x Chroma, and is the next thing to profile; the
+TSX figure in this run is above its 25us steady state, likely the same
+thermal effect.

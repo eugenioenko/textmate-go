@@ -606,7 +606,7 @@ func pushAttributedScope(
 	scopePath string,
 	grammar tokenizerGrammar,
 ) *attributedScopeStack {
-	for _, scopeName := range strings.Fields(scopePath) {
+	for scopeName := range strings.FieldsSeq(scopePath) {
 		stack = stack.pushAttributed(scopeName, grammar.scopeAttributes(scopeName))
 	}
 	return stack

@@ -124,7 +124,7 @@ func (s *attributedScopeStack) pushAttributed(scopePath string, tokenAttributes 
 	}
 
 	result := s
-	for _, scopeName := range strings.Split(scopePath, " ") {
+	for scopeName := range strings.SplitSeq(scopePath, " ") {
 		result = newAttributedScopeStack(result, result.scopePath.push(scopeName), tokenAttributes)
 	}
 	return result

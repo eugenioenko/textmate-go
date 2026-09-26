@@ -415,3 +415,30 @@ func assertCaptures(t *testing.T, got, want []Capture) {
 		}
 	}
 }
+
+func TestPatternCacheSharesPatternsAndReplaysDiagnostics(t *testing.T) {
+	cache := NewPatternCache(0)
+	first := NewScanner([]string{`a`, `[[:alpha:]&&[a]]`}, WithPatternCache(cache))
+	second := NewScanner([]string{`[[:alpha:]&&[a]]`, `a`}, WithPatternCache(cache))
+
+	if first.patterns[0] != second.patterns[1] {
+		t.Fatal("scanners did not share the cached pattern")
+	}
+	diagnostics := second.Diagnostics()
+	if len(diagnostics) != 1 || diagnostics[0].PatternIndex != 0 {
+		t.Fatalf("diagnostics = %#v, want one replayed at index 0", diagnostics)
+	}
+	match := second.FindNextMatch(NewString("xa"), 0, FindOptionNone)
+	if match == nil || match.Index != 1 || match.Captures[0] != (Capture{Start: 1, End: 2}) {
+		t.Fatalf("match = %#v, want pattern 1 at [1,2)", match)
+	}
+}
+
+func TestPatternCacheResetsWhenFull(t *testing.T) {
+	cache := NewPatternCache(2)
+	NewScanner([]string{`a`, `b`}, WithPatternCache(cache))
+	NewScanner([]string{`c`}, WithPatternCache(cache))
+	if len(cache.patterns) != 1 {
+		t.Fatalf("cache size = %d, want 1 after reset", len(cache.patterns))
+	}
+}

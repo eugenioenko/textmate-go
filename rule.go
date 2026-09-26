@@ -29,10 +29,18 @@ type regexDiagnosticCollector interface {
 }
 
 func newRuleRegExpSourceList(grammar ruleRegistry) *regexpSourceList {
+	var options []oniguruma.ScannerOption
 	if collector, ok := grammar.(regexDiagnosticCollector); ok {
-		return newRegExpSourceList(collector.addRegexDiagnostic)
+		options = append(options, oniguruma.WithDiagnosticHandler(collector.addRegexDiagnostic))
 	}
-	return newRegExpSourceList()
+	if owner, ok := grammar.(patternCacheOwner); ok {
+		options = append(options, oniguruma.WithPatternCache(owner.patternCache()))
+	}
+	return newRegExpSourceList(options...)
+}
+
+type patternCacheOwner interface {
+	patternCache() *oniguruma.PatternCache
 }
 
 type rule interface {

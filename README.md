@@ -41,9 +41,15 @@ it must be upstreamed or moved to a durable fork before a module release.
 ```sh
 make test
 make bench
+make bench-compare   # textmate-go vs vscode-textmate vs Chroma
 make lint
 CGO_ENABLED=0 go build ./...
 ```
+
+`make bench-compare` needs a compiled vscode-textmate checkout and the
+conformance harness's `pnpm install`; see
+[`benchmarks/README.md`](benchmarks/README.md) for setup, options, and the
+corpus.
 
 ## Embedded grammars
 
@@ -232,10 +238,34 @@ See [`grammars/README.md`](grammars/README.md) for the curated selection,
 regeneration instructions, source/license manifest, and all-versus-curated size
 measurements.
 
-The current benchmark and allocation baseline is recorded in
-[`docs/performance-baseline.md`](docs/performance-baseline.md). Performance
-optimization is tracked as a separate follow-up; the documented warm TSX and
-HTML targets are not yet met.
+## Performance
+
+Warm line-by-line tokenization from `make bench-compare`, in microseconds per
+line (fastest of five runs, Linux/amd64, Go 1.25.1, AMD Ryzen 7 6800H). The
+ratio is textmate-go's time over vscode-textmate's, so below 1 is faster.
+Chroma lexes each line from its root state, so its column is a throughput
+reference rather than an equivalent result. See
+[`benchmarks/README.md`](benchmarks/README.md) for the method and corpus.
+
+| Case | textmate-go | allocs/line | vscode-textmate | Chroma | vs vscode-textmate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| TSX | 33.6 | 42.4 | 19.8 | 16.8 | 1.70x |
+| HTML | 24.3 | 62.0 | 25.2 | 5.1 | 0.96x |
+| Go | 9.0 | 31.3 | 13.4 | 19.9 | 0.67x |
+| Markdown | 15.2 | 29.3 | 13.6 | 18.4 | 1.12x |
+| TypeScript | 86.4 | 74.2 | 55.9 | 25.4 | 1.55x |
+| JavaScript | 77.5 | 75.3 | 61.2 | 25.8 | 1.26x |
+| CSS | 32.5 | 53.7 | 70.3 | 11.0 | 0.46x |
+| JSON | 9.0 | 52.8 | 7.2 | 9.1 | 1.26x |
+| Python | 46.4 | 71.1 | 46.3 | 52.3 | 1.00x |
+| Rust | 27.6 | 48.6 | 30.7 | 28.9 | 0.90x |
+| Java | 60.9 | 57.2 | 38.2 | 34.3 | 1.60x |
+| C++ | 415.5 | 107.2 | 144.6 | 43.8 | 2.87x |
+| Ruby | 41.4 | 51.1 | 56.6 | 61.8 | 0.73x |
+| Shell | 28.0 | 86.7 | 30.7 | 22.1 | 0.91x |
+
+C++ is the known outlier. The earlier Phase 4 baseline is kept in
+[`docs/performance-baseline.md`](docs/performance-baseline.md).
 
 See [`plan.md`](plan.md) for the implementation phases and conformance goals.
 

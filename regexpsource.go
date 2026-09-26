@@ -151,19 +151,15 @@ type regexpSourceListAnchorCache struct {
 }
 
 type regexpSourceList struct {
-	items             []*regexpSource
-	hasAnchors        bool
-	cached            *compiledRule
-	anchorCache       regexpSourceListAnchorCache
-	diagnosticHandler func(oniguruma.Diagnostic)
+	items          []*regexpSource
+	hasAnchors     bool
+	cached         *compiledRule
+	anchorCache    regexpSourceListAnchorCache
+	scannerOptions []oniguruma.ScannerOption
 }
 
-func newRegExpSourceList(handlers ...func(oniguruma.Diagnostic)) *regexpSourceList {
-	result := &regexpSourceList{}
-	if len(handlers) != 0 {
-		result.diagnosticHandler = handlers[0]
-	}
-	return result
+func newRegExpSourceList(options ...oniguruma.ScannerOption) *regexpSourceList {
+	return &regexpSourceList{scannerOptions: options}
 }
 
 func (l *regexpSourceList) dispose() {
@@ -262,7 +258,7 @@ func (l *regexpSourceList) compileResolved(resolveAnchors, allowA, allowG bool) 
 		}
 		rules[i] = item.ruleID
 	}
-	return newCompiledRule(sources, rules, l.diagnosticHandler)
+	return newCompiledRule(sources, rules, l.scannerOptions...)
 }
 
 type compiledRule struct {
@@ -274,12 +270,8 @@ type compiledRule struct {
 func newCompiledRule(
 	regexps []string,
 	rules []ruleID,
-	diagnosticHandlers ...func(oniguruma.Diagnostic),
+	options ...oniguruma.ScannerOption,
 ) *compiledRule {
-	options := make([]oniguruma.ScannerOption, 0, 1)
-	if len(diagnosticHandlers) != 0 && diagnosticHandlers[0] != nil {
-		options = append(options, oniguruma.WithDiagnosticHandler(diagnosticHandlers[0]))
-	}
 	return &compiledRule{
 		scanner: oniguruma.NewScanner(regexps, options...),
 		regexps: append([]string(nil), regexps...),
