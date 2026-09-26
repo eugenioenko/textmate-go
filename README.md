@@ -54,8 +54,8 @@ corpus.
 
 ## Embedded grammars
 
-The optional `grammars` subpackage embeds 40 license-reviewed common grammar
-roots plus one MIT support grammar used for Markdown's inline HTML. Assets are
+The optional `grammars` subpackage embeds 124 license-reviewed grammar roots
+plus one MIT support grammar used for Markdown's inline HTML. Assets are
 individually compressed and loaded once on demand:
 
 ```go

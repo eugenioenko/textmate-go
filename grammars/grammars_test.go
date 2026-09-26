@@ -32,8 +32,8 @@ func TestLoad(t *testing.T) {
 
 func TestLoadAllConcurrently(t *testing.T) {
 	scopes := Scopes()
-	if len(scopes) != 41 {
-		t.Fatalf("len(Scopes()) = %d, want 41", len(scopes))
+	if len(scopes) != 125 {
+		t.Fatalf("len(Scopes()) = %d, want 125", len(scopes))
 	}
 	var wait sync.WaitGroup
 	for _, scopeName := range scopes {

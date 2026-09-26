@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -56,8 +55,8 @@ func TestEmbeddedCorpus(t *testing.T) {
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if len(manifest.Files) != 82 {
-		t.Fatalf("corpus entries = %d, want 82", len(manifest.Files))
+	if len(manifest.Files) != 166 {
+		t.Fatalf("corpus entries = %d, want 166", len(manifest.Files))
 	}
 	sourceGrammars := loadSourceGrammars(t, filepath.Join(packageRoot, "grammars"))
 
@@ -66,9 +65,6 @@ func TestEmbeddedCorpus(t *testing.T) {
 		t.Run(strings.ReplaceAll(fixture.File, "/", "_"), func(t *testing.T) {
 			scopeName := scopeForGrammarID(fixture.Grammar)
 			if scopeName == "" {
-				if fixture.Grammar == "yaml" || fixture.Grammar == "toml" {
-					t.Skipf("grammar %q is deliberately excluded pending license review", fixture.Grammar)
-				}
 				t.Fatalf("corpus grammar %q is unexpectedly not embedded", fixture.Grammar)
 			}
 			filename := filepath.Join(repositoryRoot, "conformance", "corpus", fixture.File)
@@ -104,7 +100,7 @@ func TestEmbeddedCorpus(t *testing.T) {
 				result := grammar.TokenizeLine(line, state)
 				sourceResult := sourceGrammar.TokenizeLine(line, sourceState)
 				assertContiguousTokens(t, fixture.File, lineIndex+1, line, result.Tokens)
-				if !reflect.DeepEqual(result.Tokens, sourceResult.Tokens) {
+				if !sameTokens(result.Tokens, sourceResult.Tokens) {
 					t.Fatalf(
 						"%s:%d embedded tokens differ from the complete source repository\nembedded: %#v\nsource:   %#v",
 						fixture.File,
@@ -273,4 +269,12 @@ func verifySourceCheckout(t *testing.T, root string) {
 	if len(output) != 0 {
 		t.Fatal("tm-grammars checkout is dirty")
 	}
+}
+
+// sameTokens ignores ScopeStack, whose interned pointers differ between the
+// two registries being compared.
+func sameTokens(a, b []textmate.Token) bool {
+	return slices.EqualFunc(a, b, func(x, y textmate.Token) bool {
+		return x.Start == y.Start && x.End == y.End && slices.Equal(x.Scopes, y.Scopes)
+	})
 }

@@ -279,10 +279,6 @@ func newCompiledPattern(source string, timeout time.Duration) *compiledPattern {
 	translated, err := translatePattern(translateInlineOptions(source))
 	_, partiallyTranslated := err.(*partialTranslationError)
 	checkSource := stripSyntaxComments(source)
-	if hasClassIntersection(checkSource) {
-		err = fmt.Errorf("oniguruma character-class intersection is not supported")
-		partiallyTranslated = false
-	}
 	if duplicate := findDuplicateNamedGroup(checkSource); duplicate != "" {
 		err = fmt.Errorf("duplicate named capture %q is not supported", duplicate)
 		partiallyTranslated = false
@@ -738,7 +734,7 @@ func translatePattern(source string) (string, error) {
 				index++
 				continue
 			}
-			translated, err := translateClass(string(runes[index:end]))
+			translated, err := translateClassWithIntersection(runes[index:end])
 			if err != nil {
 				return string(out), err
 			}
@@ -1172,6 +1168,8 @@ func translateEscape(runes []rune, start int) (string, int, error) {
 	}
 	next := runes[start+1]
 	switch next {
+	case 'N':
+		return `[^\n]`, start + 2, nil
 	case 'h':
 		return `[0-9A-Fa-f]`, start + 2, nil
 	case 'H':
@@ -1627,28 +1625,70 @@ func stripSyntaxComments(source string) string {
 	return result.String()
 }
 
-func hasClassIntersection(source string) bool {
-	runes := []rune(source)
-	depth := 0
-	for index := 0; index < len(runes); index++ {
-		if runes[index] == '\\' {
-			index++
-			continue
+// translateClassWithIntersection rewrites Oniguruma's `[A&&B]`, which regexp2
+// lacks. A class consumes exactly one rune, so the intersection is that rune
+// matching A while lookaheads check the other operands: `(?:(?=B)A)`. In a
+// lookbehind the class is matched first and the lookahead then inspects the
+// same rune, so the rewrite holds in both directions.
+func translateClassWithIntersection(class []rune) (string, error) {
+	body := class[1 : len(class)-1]
+	negated := len(body) > 0 && body[0] == '^'
+	if negated {
+		body = body[1:]
+	}
+	operands := splitClassIntersection(body)
+	if len(operands) == 1 {
+		return translateClass(string(class))
+	}
+	var translated []string
+	for _, operand := range operands {
+		if len(operand) == 0 {
+			return "", fmt.Errorf("empty operand in oniguruma character-class intersection")
 		}
-		switch runes[index] {
-		case '[':
-			depth++
-		case ']':
-			if depth > 0 {
-				depth--
+		source := "[" + string(operand) + "]"
+		if operand[0] == '[' && classEnd(operand, 0) == len(operand) {
+			source = string(operand)
+		}
+		class, err := translateClassWithIntersection([]rune(source))
+		if err != nil {
+			return "", err
+		}
+		translated = append(translated, class)
+	}
+	var match strings.Builder
+	for _, operand := range translated[1:] {
+		match.WriteString("(?=" + operand + ")")
+	}
+	match.WriteString(translated[0])
+	if negated {
+		return `(?:(?!` + match.String() + `)[\s\S])`, nil
+	}
+	return "(?:" + match.String() + ")", nil
+}
+
+// splitClassIntersection splits a class body at `&&` outside nested classes.
+func splitClassIntersection(body []rune) [][]rune {
+	var operands [][]rune
+	start := 0
+	for index := 0; index < len(body); {
+		switch {
+		case body[index] == '\\':
+			index += 2
+		case body[index] == '[':
+			if end := classEnd(body, index); end != -1 {
+				index = end
+			} else {
+				index++
 			}
-		case '&':
-			if depth > 0 && index+1 < len(runes) && runes[index+1] == '&' {
-				return true
-			}
+		case body[index] == '&' && index+1 < len(body) && body[index+1] == '&':
+			operands = append(operands, body[start:index])
+			index += 2
+			start = index
+		default:
+			index++
 		}
 	}
-	return false
+	return append(operands, body[start:])
 }
 
 func propertyClassBody(name string) string {

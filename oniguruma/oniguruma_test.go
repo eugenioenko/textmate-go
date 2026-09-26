@@ -290,8 +290,6 @@ func TestDegradedPatternsProduceDiagnosticsAndNeverMatch(t *testing.T) {
 		{name: "compile error", pattern: `(`, kind: DiagnosticCompileError},
 		{name: "subroutine by number", pattern: `(a)\g<1>`, kind: DiagnosticUnsupportedSyntax},
 		{name: "duplicate named captures", pattern: `(?<n>a)(?<n>b)`, kind: DiagnosticUnsupportedSyntax},
-		{name: "class intersection", pattern: `[a-z&&[^aeiou]]`, kind: DiagnosticUnsupportedSyntax},
-		{name: "nested class intersection", pattern: `[[\p{S}\p{P}]&&[^()]]+`, kind: DiagnosticUnsupportedSyntax},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -418,8 +416,8 @@ func assertCaptures(t *testing.T, got, want []Capture) {
 
 func TestPatternCacheSharesPatternsAndReplaysDiagnostics(t *testing.T) {
 	cache := NewPatternCache(0)
-	first := NewScanner([]string{`a`, `[[:alpha:]&&[a]]`}, WithPatternCache(cache))
-	second := NewScanner([]string{`[[:alpha:]&&[a]]`, `a`}, WithPatternCache(cache))
+	first := NewScanner([]string{`a`, `(?<n>a)(?<n>b)`}, WithPatternCache(cache))
+	second := NewScanner([]string{`(?<n>a)(?<n>b)`, `a`}, WithPatternCache(cache))
 
 	if first.patterns[0] != second.patterns[1] {
 		t.Fatal("scanners did not share the cached pattern")
@@ -440,5 +438,39 @@ func TestPatternCacheResetsWhenFull(t *testing.T) {
 	NewScanner([]string{`c`}, WithPatternCache(cache))
 	if len(cache.patterns) != 1 {
 		t.Fatalf("cache size = %d, want 1 after reset", len(cache.patterns))
+	}
+}
+
+func TestClassIntersectionAndLineEscape(t *testing.T) {
+	tests := []struct {
+		pattern, text string
+		want          []Capture
+	}{
+		{`[a-z&&[^aeiou]]+`, "aebcdi", []Capture{{Start: 2, End: 5}}},
+		{`[[\p{S}\p{P}]&&[^()]]+`, "(+-)", []Capture{{Start: 1, End: 3}}},
+		{`[^a-z&&[^aeiou]]`, "bca", []Capture{{Start: 2, End: 3}}},
+		{`[a-z&&[b-y]&&[^c]]+`, "abcd", []Capture{{Start: 1, End: 2}}},
+		{`(?<![[\p{S}\p{P}]&&[^(]])x`, "(x+x", []Capture{{Start: 1, End: 2}}},
+		{`(?<=[[\p{S}\p{P}]&&[^(]])x`, "(x+x", []Capture{{Start: 3, End: 4}}},
+		{`a\N+`, "abc\nd", []Capture{{Start: 0, End: 3}}},
+	}
+	for _, test := range tests {
+		scanner := NewScanner([]string{test.pattern})
+		if diagnostics := scanner.Diagnostics(); len(diagnostics) != 0 {
+			t.Fatalf("%s: diagnostics = %+v", test.pattern, diagnostics)
+		}
+		match := scanner.FindNextMatch(NewString(test.text), 0, FindOptionNone)
+		if match == nil || match.Captures[0] != test.want[0] {
+			t.Errorf("%s on %q = %+v, want %+v", test.pattern, test.text, match, test.want)
+		}
+	}
+}
+
+func TestEscapedHyphenRangeEndpoint(t *testing.T) {
+	scanner := NewScanner([]string{`[ !%\&*-\-/<-@\\|~]+`})
+	for text, want := range map[string]bool{".": false, "-": true, "/": true, "+": true, "a": false} {
+		if got := scanner.FindNextMatch(NewString(text), 0, FindOptionNone) != nil; got != want {
+			t.Errorf("match %q = %v, want %v", text, got, want)
+		}
 	}
 }

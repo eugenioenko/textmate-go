@@ -309,3 +309,77 @@ func equalSnapshots(left, right map[string][]byte) bool {
 	}
 	return true
 }
+
+func TestLicenseReviewFillsMissingLicense(t *testing.T) {
+	checkout, revision := makeSourceCheckout(t, []fixtureGrammar{
+		{id: "missing", scope: "source.missing"},
+		{id: "unasserted", scope: "source.unasserted", license: "NOASSERTION"},
+	})
+	selection := writeSelection(t, "missing\nunasserted\n")
+	reviews := filepath.Join(t.TempDir(), "reviews.json")
+	mustWrite(t, reviews, []byte(`[
+		{"id": "missing", "license": "TextMate-Bundle", "evidence": "https://example.invalid/missing", "text": "Permission granted."},
+		{"id": "unasserted", "license": "MIT", "evidence": "https://example.invalid/unasserted", "text": "MIT text."}
+	]`))
+	out := t.TempDir()
+	if err := generate(generatorConfig{
+		source: checkout, revision: revision, selection: selection, licenseReviews: reviews, out: out,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	notice, err := os.ReadFile(filepath.Join(out, "NOTICE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"fixture notice", "## missing (TextMate-Bundle)", "Permission granted.", "## unasserted (MIT)"} {
+		if !strings.Contains(string(notice), want) {
+			t.Errorf("NOTICE lacks %q:\n%s", want, notice)
+		}
+	}
+	manifest, err := os.ReadFile(filepath.Join(out, "MANIFEST.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(manifest), "| TextMate-Bundle |") {
+		t.Errorf("MANIFEST.md lacks reviewed license:\n%s", manifest)
+	}
+}
+
+func TestLicenseReviewRejectsConflictsAndStaleEntries(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		reviews string
+		want    string
+	}{
+		{
+			name:    "metadata already licensed",
+			reviews: `[{"id": "good", "license": "MIT", "evidence": "e", "text": "t"}]`,
+			want:    `has a license review but metadata states "MIT"`,
+		},
+		{
+			name:    "unselected grammar",
+			reviews: `[{"id": "other", "license": "MIT", "evidence": "e", "text": "t"}]`,
+			want:    `license review for "other" matches no selected grammar`,
+		},
+		{
+			name:    "incomplete",
+			reviews: `[{"id": "good", "license": "MIT"}]`,
+			want:    "must set id, license, evidence, and text",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			checkout, revision := makeSourceCheckout(t, []fixtureGrammar{
+				{id: "good", scope: "source.good", license: "MIT"},
+			})
+			reviews := filepath.Join(t.TempDir(), "reviews.json")
+			mustWrite(t, reviews, []byte(test.reviews))
+			err := generate(generatorConfig{
+				source: checkout, revision: revision, selection: writeSelection(t, "good\n"),
+				licenseReviews: reviews, out: t.TempDir(),
+			})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("generate error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}

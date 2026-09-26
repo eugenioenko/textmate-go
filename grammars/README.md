@@ -1,6 +1,6 @@
 # Embedded grammars
 
-This package embeds 40 mainstream TextMate grammar roots plus the small MIT
+This package embeds 124 TextMate grammar roots plus the small MIT
 `html-derivative` support grammar required for Markdown inline HTML, all as
 individually compressed JSON assets. `Load` decompresses and parses a grammar
 only on first use, then caches the result. `ForFilename` maps conventional
@@ -31,18 +31,30 @@ notices. Any selection containing a missing or unreviewed license fails without
 changing the existing generated package; this also means `-selection all`
 deliberately fails at the pinned revision.
 
-The curated set is recommended over embedding all 260 grammars: it covers the
-common web, Go, Python, Rust, JVM, C-family, shell, configuration, and Markdown
-use cases while keeping the application payload substantially smaller. The
-all-260 corpus is not suitable for automatic redistribution without a separate
-license review: its pinned metadata contains 194 MIT, 22 Apache-2.0, 21 unknown,
-12 NOASSERTION, five GPL-3.0, three MPL-2.0, and one each GNU, ISC, and
-BSD-3-Clause entries. Exact comparative measurements are recorded below;
-`SOURCE` records the reproducible current curated totals.
+Accepted licenses are MIT, Apache-2.0, BSD-3-Clause, ISC, MPL-2.0, and the
+TextMate bundle grant ("Permission to copy, use, modify, sell and distribute
+this software is granted..."). A grammar whose upstream metadata states no
+license or `NOASSERTION` can be embedded only with an entry in
+`license-reviews.json`, which records the license, a link to the evidence at the
+pinned upstream commit, and the license text; the generator appends that text
+to `NOTICE`. It currently covers YAML (MIT, per its `YAML-license.txt`), TOML
+(the TextMate bundle grant), Elixir (Apache-2.0 header), and Sass (MIT). An
+entry for a grammar that already states a license, or that is not selected, is
+an error. GPL-licensed grammars are deliberately excluded.
+
+The selection covers the original 40 mainstream languages plus every
+permissively licensed grammar for a language that Chroma highlights, so
+switching from Chroma loses little coverage. The all-260 corpus is not suitable
+for automatic redistribution without a separate license review: its pinned
+metadata contains 194 MIT, 22 Apache-2.0, 21 unknown, 12 NOASSERTION, five
+GPL-3.0, three MPL-2.0, and one each GNU, ISC, and BSD-3-Clause entries. Exact
+comparative measurements are recorded below; `SOURCE` records the reproducible
+current curated totals.
 
 | Pinned set | Grammars | Compacted JSON | Per-file gzip | Stripped probe binary |
 | --- | ---: | ---: | ---: | ---: |
-| Curated | 41 | 2,485,124 B | 331,365 B | 2,740,372 B |
+| Curated | 125 | 4,648,925 B | 785,956 B | 3,211,412 B |
+| Original 40 | 41 | 2,485,124 B | 331,365 B | 2,740,372 B |
 | All | 260 | 7,654,872 B | 1,318,324 B | 3,752,084 B |
 
 The binary figures were measured on Linux/amd64 with Go 1.25.1 using a minimal
@@ -51,9 +63,10 @@ tracked `cmd/grammar-size-probe`, built with
 ./cmd/grammar-size-probe`. The current curated figure is directly reproducible;
 the all-260 figure is the Phase 4 measurement made with the same minimal API
 calls before the fail-closed generator prohibited staging unreviewed licenses.
-The curated build saves 986,959 compressed-data bytes and 1,011,712 binary
-bytes. Because the all-260 set is roughly four times the compressed payload and
-carries unresolved license metadata, the curated set is the production default.
+Extending the original 40 to 124 roots adds 454,591 compressed-data bytes and
+471,040 binary bytes; the all-260 set would add another 532,368 and 540,672 and
+carries unresolved license metadata, so the curated set is the production
+default.
 
 Some curated roots contain optional includes for other languages, such as
 Markdown fenced-code grammars, Vue preprocessors, C/C++ assembly dialects, and
@@ -61,8 +74,8 @@ Ruby template variants. The registry deliberately treats an unavailable
 external include as non-fatal. The exact sorted set is checked in at
 `OPTIONAL_DEPENDENCIES` and guarded by a test, so adding or removing an
 upstream dependency cannot silently change the standalone package. The opt-in
-`TestEmbeddedCorpus` gate tokenizes the 40 focused regression files whose
-grammars are embedded and all 40 pinned upstream samples using only
-`grammars.Load`; the two supplemental YAML/TOML regressions are explicitly
-skipped because those grammars await license review. CI enables the gate with
-`TEXTMATE_GO_REQUIRE_EMBEDDED_CORPUS=1`.
+`TestEmbeddedCorpus` gate tokenizes the 42 focused regression files and the
+pinned upstream sample of every embedded grammar, 166 files in all, using only
+`grammars.Load`, and checks each against the complete source repository. The
+same corpus drives the vscode-textmate differential test. CI enables the gate
+with `TEXTMATE_GO_REQUIRE_EMBEDDED_CORPUS=1`.

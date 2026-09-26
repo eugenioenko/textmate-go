@@ -564,3 +564,44 @@ roughly 2x gap in this session rather than a single-run outlier.
 The Chroma column remains a throughput reference, not an equivalent semantic
 comparison: Chroma starts each line at its root state while both TextMate
 engines carry multiline rule state between lines.
+
+### 2026-09-25: from 40 to 124 embedded grammars
+
+Switching ttt from Chroma dropped highlighting for every language outside the
+40 embedded grammars. Of Chroma's ~290 lexers, about 244 had no embedded
+grammar; 105 of those exist in tm-grammars, and 132 have no TextMate grammar
+there at all (Fortran, Go templates, Cython, Meson, Thrift, ...).
+
+- **Scope:** the 80 with clear permissive licenses (MIT, Apache-2.0,
+  BSD-3-Clause, ISC, MPL-2.0), plus YAML, TOML, Elixir, and Sass after a manual
+  license check. GPL-3.0 grammars (Ada, Nginx, Org, Racket, Gnuplot) stay out of
+  an MIT library; the remaining unknown/NOASSERTION ones were not reviewed.
+- **One package, not an opt-in extra:** Chroma also bundles every lexer, and
+  the extra ~470KB of binary is small; a build tag can trim it later if needed.
+- **License reviews:** tm-grammars' `NOTICE` already carries each grammar's
+  full license text. Grammars with no license metadata get an entry in
+  `grammars/license-reviews.json` (license, evidence URL at the pinned commit,
+  text), which the generator appends to `NOTICE`. Checking mattered: YAML looked
+  like the TextMate README grant, but its syntax directory ships its own
+  `YAML-license.txt` (MIT, FichteFoll), which the README carves out as an
+  exception. Elixir and Sass were NOASSERTION only because GitHub's detector
+  did not recognise an Apache header and a two-part MIT file.
+- **Verification:** every new grammar's upstream sample joined the corpus
+  (166 files), which feeds both the embedded-vs-source gate and the
+  vscode-textmate differential. The differential caught five divergences, all
+  pre-dating the performance work (reproduced against the pre-optimization
+  regexp2 commit):
+  - `\N` (any rune but newline) was untranslated, disabling patterns in Hy,
+    Shell Session, and Stylus. Now `[^\n]`.
+  - Oniguruma class intersection `[A&&B]` disabled 16 Haskell patterns. A class
+    consumes one rune, so it translates to `(?:(?=B)A)` (negated:
+    `(?:(?!(?=B)A)[\s\S])`); in a lookbehind the class matches first and the
+    lookahead then inspects the same rune, so the rewrite holds both ways.
+  - Smalltalk's `[ !%\&*-\-/<-@\\|~]` matched `.`: regexp2, following .NET,
+    added an escaped hyphen as a literal and returned early, leaving the
+    pending `*-` range open until `/`. Fixed in the regexp2 fork's parser so
+    `\-` can end (or start) a range, as in Oniguruma, PCRE, and JavaScript.
+  After these fixes all 166 corpus files and the fuzz run match vscode-textmate.
+- The embedded-corpus gate had been silently broken since scope stacks were
+  interned: it compared tokens with `reflect.DeepEqual`, and two registries
+  intern different `ScopeStack` pointers. It now compares positions and scopes.

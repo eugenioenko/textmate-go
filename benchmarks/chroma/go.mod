@@ -13,3 +13,5 @@ require (
 )
 
 replace github.com/eugenioenko/textmate-go => ../..
+
+replace github.com/eugenioenko/regexp2/v2 => ../../../regexp2

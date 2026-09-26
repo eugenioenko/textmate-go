@@ -17,7 +17,7 @@ import (
 	textmate "github.com/eugenioenko/textmate-go"
 )
 
-//go:generate go run ../internal/cmd/gen-grammars -source ../../tm-grammars -revision 37edd1b26f18838050661d912334aba0ca7f4931 -selection curated.txt -out .
+//go:generate go run ../internal/cmd/gen-grammars -source ../../tm-grammars -revision 37edd1b26f18838050661d912334aba0ca7f4931 -selection curated.txt -license-reviews license-reviews.json -out .
 
 //go:embed data/*.json.gz
 var assets embed.FS

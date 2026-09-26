@@ -58,13 +58,25 @@ type generationPlan struct {
 	grammars  []preparedGrammar
 	notice    []byte
 	license   []byte
+	reviewed  []licenseReview
 }
 
 type generatorConfig struct {
-	source    string
-	revision  string
-	selection string
-	out       string
+	source         string
+	revision       string
+	selection      string
+	licenseReviews string
+	out            string
+}
+
+// licenseReview records a license established by hand for a grammar whose
+// upstream metadata states none or NOASSERTION. Text is the license grant or
+// header as published at Evidence, and is reproduced in NOTICE.
+type licenseReview struct {
+	ID       string `json:"id"`
+	License  string `json:"license"`
+	Evidence string `json:"evidence"`
+	Text     string `json:"text"`
 }
 
 type candidate struct {
@@ -76,13 +88,15 @@ func main() {
 	source := flag.String("source", "", "path to the textmate-grammars-themes checkout")
 	revision := flag.String("revision", "", "required source Git revision")
 	selection := flag.String("selection", "", "newline-delimited grammar IDs, or 'all'")
+	licenseReviews := flag.String("license-reviews", "", "JSON file of hand-reviewed licenses")
 	out := flag.String("out", ".", "output package directory")
 	flag.Parse()
 	if *source == "" || *revision == "" || *selection == "" {
 		fatalf("-source, -revision, and -selection are required")
 	}
 	if err := generate(generatorConfig{
-		source: *source, revision: *revision, selection: *selection, out: *out,
+		source: *source, revision: *revision, selection: *selection,
+		licenseReviews: *licenseReviews, out: *out,
 	}); err != nil {
 		fatalf("%v", err)
 	}
@@ -96,7 +110,11 @@ func generate(config generatorConfig) error {
 	if err := verifyRevision(root, config.revision); err != nil {
 		return err
 	}
-	plan, err := prepareGeneration(root, config.revision, config.selection)
+	reviews, err := readLicenseReviews(config.licenseReviews)
+	if err != nil {
+		return err
+	}
+	plan, err := prepareGeneration(root, config.revision, config.selection, reviews)
 	if err != nil {
 		return err
 	}
@@ -109,7 +127,7 @@ func generate(config generatorConfig) error {
 
 var grammarIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*$`)
 
-func prepareGeneration(root, revision, selection string) (*generationPlan, error) {
+func prepareGeneration(root, revision, selection string, reviews map[string]licenseReview) (*generationPlan, error) {
 	grammarDir := filepath.Join(root, "packages", "tm-grammars", "grammars")
 	ids, err := selectedIDs(grammarDir, selection)
 	if err != nil {
@@ -138,6 +156,13 @@ func prepareGeneration(root, revision, selection string) (*generationPlan, error
 		}
 		if source.DisplayName == "" {
 			return nil, fmt.Errorf("grammar %q metadata has no displayName", id)
+		}
+		if review, ok := reviews[id]; ok {
+			if source.License != "" && source.License != "NOASSERTION" {
+				return nil, fmt.Errorf("grammar %q has a license review but metadata states %q", id, source.License)
+			}
+			source.License = review.License
+			plan.reviewed = append(plan.reviewed, review)
 		}
 		if source.License == "" {
 			return nil, fmt.Errorf("grammar %q metadata has no license", id)
@@ -189,10 +214,23 @@ func prepareGeneration(root, revision, selection string) (*generationPlan, error
 		})
 	}
 
+	if len(plan.reviewed) != len(reviews) {
+		used := make(map[string]bool, len(plan.reviewed))
+		for _, review := range plan.reviewed {
+			used[review.ID] = true
+		}
+		for id := range reviews {
+			if !used[id] {
+				return nil, fmt.Errorf("license review for %q matches no selected grammar", id)
+			}
+		}
+	}
+
 	plan.notice, err = os.ReadFile(filepath.Join(root, "packages", "tm-grammars", "NOTICE"))
 	if err != nil {
 		return nil, fmt.Errorf("read source NOTICE: %w", err)
 	}
+	plan.notice = appendReviewedNotices(plan.notice, plan.reviewed)
 	plan.license, err = os.ReadFile(filepath.Join(root, "packages", "tm-grammars", "LICENSE"))
 	if err != nil {
 		return nil, fmt.Errorf("read source LICENSE: %w", err)
@@ -284,9 +322,49 @@ func generatedStringField(line string) (string, string, bool) {
 	return key, value, true
 }
 
+func readLicenseReviews(path string) (map[string]licenseReview, error) {
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read license reviews: %w", err)
+	}
+	var list []licenseReview
+	if err := json.Unmarshal(data, &list); err != nil {
+		return nil, fmt.Errorf("parse license reviews: %w", err)
+	}
+	reviews := make(map[string]licenseReview, len(list))
+	for _, review := range list {
+		if review.ID == "" || review.License == "" || review.Evidence == "" || review.Text == "" {
+			return nil, fmt.Errorf("license review %q must set id, license, evidence, and text", review.ID)
+		}
+		if _, exists := reviews[review.ID]; exists {
+			return nil, fmt.Errorf("duplicate license review for %q", review.ID)
+		}
+		reviews[review.ID] = review
+	}
+	return reviews, nil
+}
+
+func appendReviewedNotices(notice []byte, reviews []licenseReview) []byte {
+	if len(reviews) == 0 {
+		return notice
+	}
+	var buffer bytes.Buffer
+	buffer.Write(bytes.TrimRight(notice, "\n"))
+	buffer.WriteString("\n\n---\n\nThe following grammars carry no license in the upstream package metadata.\nTheir licenses were reviewed by hand at the sources below.\n")
+	for _, review := range reviews {
+		fmt.Fprintf(&buffer, "\n## %s (%s)\n\nSource: %s\n\n%s\n", review.ID, review.License, review.Evidence, strings.TrimSpace(review.Text))
+	}
+	return buffer.Bytes()
+}
+
+// TextMate-Bundle is the grant in TextMate's own bundle READMEs: permission to
+// copy, use, modify, sell, and distribute, provided as is.
 func permissiveLicense(license string) bool {
 	switch license {
-	case "MIT", "Apache-2.0", "BSD-3-Clause", "ISC":
+	case "MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "MPL-2.0", "TextMate-Bundle":
 		return true
 	default:
 		return false
