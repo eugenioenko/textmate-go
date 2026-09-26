@@ -313,31 +313,38 @@ measurements.
 
 ## Performance
 
-Warm line-by-line tokenization from `make bench-compare`, in microseconds per
-line (2026-09-25, fastest of five runs, Linux/amd64, Go 1.25.1, AMD Ryzen 7
-6800H, regexp2 v2.8.1). Each ratio is textmate-go's time over the comparison
-engine, so below 1 is faster. Chroma lexes each line from its root state, so its
-column is a throughput reference rather than an equivalent result. See
-[`benchmarks/README.md`](benchmarks/README.md) for the method and corpus.
+Warm line-by-line tokenization from `make bench-compare-extended`, in
+microseconds per line (2026-09-25, fastest of five runs, Linux/amd64, Go 1.25.1,
+AMD Ryzen 7 6800H on the performance power profile, regexp2 v2.8.1). Each ratio
+is textmate-go's time over the comparison engine, so below 1 is faster. Chroma
+lexes each line from its root state, so its column is a throughput reference
+rather than an equivalent result. See [`benchmarks/README.md`](benchmarks/README.md)
+for the method and corpus.
 
 | Case | textmate-go | allocs/line | vscode-textmate | Chroma | vs JS | vs Chroma |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| TSX | 35.9 | 42.4 | 21.1 | 17.7 | 1.70x | 2.02x |
-| HTML | 23.3 | 62.2 | 27.1 | 5.4 | 0.86x | 4.35x |
-| Go | 9.8 | 31.3 | 14.2 | 20.4 | 0.69x | 0.48x |
-| Markdown | 17.3 | 29.3 | 15.7 | 19.7 | 1.10x | 0.88x |
-| TypeScript | 79.7 | 74.1 | 59.7 | 27.2 | 1.33x | 2.93x |
-| JavaScript | 69.7 | 75.2 | 68.2 | 27.8 | 1.02x | 2.51x |
-| CSS | 25.9 | 53.7 | 78.5 | 11.6 | 0.33x | 2.23x |
-| JSON | 8.8 | 52.8 | 7.9 | 9.8 | 1.12x | 0.90x |
-| Python | 46.6 | 71.1 | 48.9 | 55.4 | 0.95x | 0.84x |
-| Rust | 28.4 | 48.6 | 31.5 | 30.6 | 0.90x | 0.93x |
-| Java | 59.9 | 57.1 | 39.8 | 36.3 | 1.50x | 1.65x |
-| C++ | 265.5 | 106.3 | 162.9 | 46.2 | 1.63x | 5.75x |
-| Ruby | 41.6 | 51.1 | 58.7 | 63.3 | 0.71x | 0.66x |
-| Shell | 28.4 | 86.7 | 32.0 | 23.8 | 0.89x | 1.20x |
+| TSX | 22.8 | 23.8 | 20.8 | 17.1 | 1.10x | 1.33x |
+| HTML | 22.1 | 37.4 | 26.0 | 5.2 | 0.85x | 4.24x |
+| Go | 9.6 | 17.9 | 14.0 | 20.3 | 0.69x | 0.47x |
+| Markdown | 17.1 | 19.3 | 15.3 | 19.1 | 1.11x | 0.90x |
+| TypeScript | 76.3 | 36.2 | 58.2 | 26.3 | 1.31x | 2.90x |
+| JavaScript | 67.7 | 35.4 | 64.3 | 26.7 | 1.05x | 2.54x |
+| CSS | 25.1 | 31.9 | 74.0 | 11.2 | 0.34x | 2.24x |
+| JSON | 8.3 | 29.4 | 7.6 | 9.3 | 1.08x | 0.89x |
+| Python | 45.7 | 34.2 | 48.4 | 53.6 | 0.94x | 0.85x |
+| Rust | 28.5 | 26.5 | 31.2 | 29.7 | 0.91x | 0.96x |
+| Java | 59.6 | 30.5 | 38.9 | 35.5 | 1.53x | 1.68x |
+| C++ | 269.6 | 68.2 | 158.0 | 45.0 | 1.71x | 5.99x |
+| Ruby | 42.0 | 25.9 | 59.0 | 62.6 | 0.71x | 0.67x |
+| Shell | 27.2 | 42.7 | 31.8 | 23.0 | 0.85x | 1.18x |
+| C# | 28.6 | 24.6 | 24.9 | 14.1 | 1.15x | 2.03x |
+| PHP | 14.9 | 18.7 | 24.6 | 10.9 | 0.60x | 1.36x |
+| SQL | 13.6 | 15.2 | 41.9 | 25.5 | 0.32x | 0.53x |
+| YAML | 8.8 | 17.8 | 11.2 | 7.7 | 0.79x | 1.14x |
+| Haskell | 7.1 | 15.2 | 9.0 | 7.2 | 0.79x | 0.99x |
+| Vue | 27.4 | 31.2 | 28.6 | 14.9 | 0.96x | 1.84x |
 
-textmate-go is faster than vscode-textmate in seven of the fourteen cases. C++
+textmate-go is faster than vscode-textmate in twelve of the twenty cases. C++
 is the slowest case: its grammar's very large patterns backtrack heavily in
 regexp2's interpreter. The earlier Phase 4 baseline is kept in
 [`docs/performance-baseline.md`](docs/performance-baseline.md).
