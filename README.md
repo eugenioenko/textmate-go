@@ -16,7 +16,7 @@ Development and conformance testing use sibling checkouts at these revisions:
 - `textmate-grammars-themes`: `37edd1b26f18838050661d912334aba0ca7f4931`
 - `gopher-textmate`: `ce2b42e5386c93ae781add9df2e6328338b06f9e`
 - `regexp2`: maintained fork `github.com/eugenioenko/regexp2/v2`, release
-  `v2.8.0-textmate.1` (upstream v2.8.0 base `9d0d2ffe88a8b90012f7979ec85424e46d5ef48f`)
+  `v2.8.1` (upstream v2.8.0 base `9d0d2ffe88a8b90012f7979ec85424e46d5ef48f`)
 
 The implementation is ported from `vscode-textmate`; its Microsoft MIT license
 is reproduced in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
