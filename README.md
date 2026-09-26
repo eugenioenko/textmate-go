@@ -249,22 +249,23 @@ reference rather than an equivalent result. See
 
 | Case | textmate-go | allocs/line | vscode-textmate | Chroma | vs vscode-textmate |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| TSX | 33.6 | 42.4 | 19.8 | 16.8 | 1.70x |
-| HTML | 24.3 | 62.0 | 25.2 | 5.1 | 0.96x |
-| Go | 9.0 | 31.3 | 13.4 | 19.9 | 0.67x |
-| Markdown | 15.2 | 29.3 | 13.6 | 18.4 | 1.12x |
-| TypeScript | 86.4 | 74.2 | 55.9 | 25.4 | 1.55x |
-| JavaScript | 77.5 | 75.3 | 61.2 | 25.8 | 1.26x |
-| CSS | 32.5 | 53.7 | 70.3 | 11.0 | 0.46x |
-| JSON | 9.0 | 52.8 | 7.2 | 9.1 | 1.26x |
-| Python | 46.4 | 71.1 | 46.3 | 52.3 | 1.00x |
-| Rust | 27.6 | 48.6 | 30.7 | 28.9 | 0.90x |
-| Java | 60.9 | 57.2 | 38.2 | 34.3 | 1.60x |
-| C++ | 415.5 | 107.2 | 144.6 | 43.8 | 2.87x |
-| Ruby | 41.4 | 51.1 | 56.6 | 61.8 | 0.73x |
-| Shell | 28.0 | 86.7 | 30.7 | 22.1 | 0.91x |
+| TSX | 33.7 | 42.6 | 19.6 | 17.0 | 1.71x |
+| HTML | 24.5 | 62.4 | 25.3 | 5.2 | 0.97x |
+| Go | 9.1 | 31.3 | 13.6 | 19.6 | 0.67x |
+| Markdown | 15.3 | 29.3 | 13.6 | 18.6 | 1.13x |
+| TypeScript | 85.7 | 74.0 | 55.6 | 25.5 | 1.54x |
+| JavaScript | 77.6 | 75.3 | 61.9 | 26.0 | 1.25x |
+| CSS | 32.5 | 53.7 | 71.1 | 11.1 | 0.46x |
+| JSON | 9.1 | 52.8 | 7.1 | 9.0 | 1.28x |
+| Python | 46.2 | 71.1 | 46.6 | 53.6 | 0.99x |
+| Rust | 27.3 | 48.6 | 30.5 | 29.2 | 0.89x |
+| Java | 60.8 | 57.3 | 38.4 | 34.6 | 1.58x |
+| C++ | 272.0 | 106.5 | 145.9 | 44.3 | 1.86x |
+| Ruby | 40.9 | 51.1 | 56.0 | 62.6 | 0.73x |
+| Shell | 27.8 | 86.7 | 30.5 | 22.2 | 0.91x |
 
-C++ is the known outlier. The earlier Phase 4 baseline is kept in
+C++ is the slowest case: its grammar's very large patterns backtrack heavily in
+regexp2's interpreter. The earlier Phase 4 baseline is kept in
 [`docs/performance-baseline.md`](docs/performance-baseline.md).
 
 See [`plan.md`](plan.md) for the implementation phases and conformance goals.

@@ -503,3 +503,27 @@ TypeScript family and Java sit around 1.3–1.7x. C++ is the clear outlier at
 2.9x JavaScript and 9.5x Chroma, and is the next thing to profile; the
 TSX figure in this run is above its 25us steady state, likely the same
 thermal effect.
+
+### 2026-09-25: why C++ was the outlier
+
+C++ ran about 453 regex searches per line (TSX: 146) against patterns up to
+7KB long, and even vscode-textmate needs ~145us/line for it. Most C++ patterns
+open with the grammar's boundary prefix, an alternation that can match empty,
+so the required-rune bound rarely applies. The specific regexp2 weakness was
+the keyword lists, around 100 literals each inside lookaheads such as
+`(?!\b(?:reinterpret_cast|thread_local|...)\b)`. regexp2 factors common
+prefixes only across adjacent branches, and the grammar sorts these lists by
+length, so `const_cast`, `consteval`, and `co_return` were never merged and
+every identifier position tried each keyword in turn.
+
+The fix stably groups adjacent literal-first branches by first character before
+prefix extraction, which turns each list into a trie with first-character
+dispatch. Upstream .NET only reorders inside atomic alternations; grouping is
+also safe with backtracking because branches starting with different characters
+cannot both match at one position, and order within each group is kept.
+Case-insensitive literals are excluded, since `Hello` and `hi` can both match.
+
+C++ went from 415 to 272us/line (2.9x to 1.9x vscode-textmate) with the other
+languages unchanged and conformance, differential, and fuzz suites green. The
+remainder is interpreter throughput: 78% of C++ time is regexp2's backtracking
+loop, and the worst pattern still averages ~118us per call.
