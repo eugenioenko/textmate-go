@@ -8,12 +8,6 @@ on:
       - "v*"
   pull_request:
   workflow_dispatch:
-    inputs:
-      run_theme_goldens:
-        description: Run the isolated 72-file theme golden suite
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -84,8 +78,18 @@ jobs:
       - name: Install pinned dependencies
         run: |
           go mod download
+          go mod verify
+          (cd benchmarks/chroma && go mod download && go mod verify)
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
           pnpm --dir conformance install --frozen-lockfile
+
+      - name: Verify Go module metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          go mod tidy
+          (cd benchmarks/chroma && go mod tidy)
+          git diff --exit-code -- go.mod go.sum benchmarks/chroma/go.mod benchmarks/chroma/go.sum
 
       - name: Check Go formatting and static analysis
         shell: bash
@@ -106,6 +110,7 @@ jobs:
         run: |
           CGO_ENABLED=0 go test ./...
           CGO_ENABLED=0 go build ./...
+          (cd benchmarks/chroma && CGO_ENABLED=0 go test ./...)
 
       - name: Run race detector
         run: go test -race -count=1 ./...
@@ -119,11 +124,8 @@ jobs:
           set -euo pipefail
           go generate ./grammars
           test -z "$(git status --porcelain -- grammars)"
-          report_file="$(mktemp)"
-          go run ./cmd/grammar-report \
-            -grammars ../tm-grammars/packages/tm-grammars/grammars \
-            -revision "$TM_GRAMMARS_REVISION" > "$report_file"
-          cmp docs/grammar-report.md "$report_file"
+          TEXTMATE_GO_REQUIRE_GRAMMAR_REPORT=1 \
+            go test -count=1 -run '^TestGrammarReportGolden$' ./cmd/grammar-report
 
       - name: Validate standalone embedded grammar corpus
         env:
@@ -150,7 +152,6 @@ jobs:
         run: pnpm --dir conformance test:differential:ci
 
       - name: Validate isolated theme goldens
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_theme_goldens }}
         run: pnpm --dir conformance test:go:themes
 
       - name: Verify reference repositories remained pinned and clean

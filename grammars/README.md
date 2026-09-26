@@ -79,3 +79,31 @@ pinned upstream sample of every embedded grammar, 166 files in all, using only
 `grammars.Load`, and checks each against the complete source repository. The
 same corpus drives the vscode-textmate differential test. CI enables the gate
 with `TEXTMATE_GO_REQUIRE_EMBEDDED_CORPUS=1`.
+
+## Regex compatibility golden
+
+The grammar-report test parses and registry-loads all 260 grammars in the
+pinned source corpus, then scans all 34,698 regex fields through the same
+translation and compilation path used at runtime. The current report has no
+grammar load failures, 159 expected unsupported-syntax diagnostics, four
+compile failures, and no other diagnostics. The four compile failures are two
+patterns each in C# and the unbundled Razor grammar.
+
+Among the bundled roots, C++, C#, Go, Haskell, Kotlin, Markdown, PowerShell,
+and Swift contain at least one explicitly degraded unsupported pattern; all
+still load, and the embedded differential corpus remains at exact token and
+scope parity. The complete per-pattern output lives beside its generator as
+[`cmd/grammar-report/testdata/report.golden.md`](../cmd/grammar-report/testdata/report.golden.md).
+
+After an intentional translator or pinned-corpus change, update the golden file
+from the repository root and review the resulting diagnostic diff:
+
+```sh
+TM_GRAMMARS_DIR=../tm-grammars/packages/tm-grammars \
+  go test -count=1 ./cmd/grammar-report \
+  -run '^TestGrammarReportGolden$' -update
+```
+
+Without `-update`, CI regenerates the report in memory and compares it with the
+checked file. The test refuses a dirty checkout or a revision other than the
+one recorded by the generated grammar package.

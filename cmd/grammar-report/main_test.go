@@ -2,14 +2,63 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	embeddedgrammars "github.com/eugenioenko/textmate-go/grammars"
 	"github.com/eugenioenko/textmate-go/oniguruma"
 )
+
+var updateGolden = flag.Bool("update", false, "update grammar-report golden files")
+
+func TestGrammarReportGolden(t *testing.T) {
+	if !*updateGolden && os.Getenv("TEXTMATE_GO_REQUIRE_GRAMMAR_REPORT") != "1" {
+		t.Skip("set TEXTMATE_GO_REQUIRE_GRAMMAR_REPORT=1 to verify the full grammar report")
+	}
+
+	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	packageRoot := os.Getenv("TM_GRAMMARS_DIR")
+	if packageRoot == "" {
+		packageRoot = filepath.Join(repositoryRoot, "..", "tm-grammars", "packages", "tm-grammars")
+	} else if !filepath.IsAbs(packageRoot) {
+		packageRoot = filepath.Join(repositoryRoot, packageRoot)
+	}
+
+	result, err := scan(options{
+		grammarDir: filepath.Join(packageRoot, "grammars"),
+		revision:   embeddedgrammars.SourceRevision,
+		wantCount:  pinnedGrammarCount,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got bytes.Buffer
+	if err := writeReport(&got, result); err != nil {
+		t.Fatal(err)
+	}
+
+	goldenPath := filepath.Join("testdata", "report.golden.md")
+	if *updateGolden {
+		if err := os.WriteFile(goldenPath, got.Bytes(), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("updated %s", goldenPath)
+	}
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got.Bytes(), want) {
+		t.Fatalf("grammar report differs from %s; inspect the translator change and rerun this test with -update", goldenPath)
+	}
+}
 
 func TestScanReportsLoadsAndRegexDiagnostics(t *testing.T) {
 	dir := newGrammarCheckout(t)
