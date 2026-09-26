@@ -80,6 +80,7 @@ jobs:
           go mod download
           go mod verify
           (cd benchmarks/chroma && go mod download && go mod verify)
+          (cd benchmarks/textmate && go mod download && go mod verify)
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
           pnpm --dir conformance install --frozen-lockfile
 
@@ -89,7 +90,11 @@ jobs:
           set -euo pipefail
           go mod tidy
           (cd benchmarks/chroma && go mod tidy)
-          git diff --exit-code -- go.mod go.sum benchmarks/chroma/go.mod benchmarks/chroma/go.sum
+          (cd benchmarks/textmate && go mod tidy)
+          git diff --exit-code -- \
+            go.mod go.sum \
+            benchmarks/chroma/go.mod benchmarks/chroma/go.sum \
+            benchmarks/textmate/go.mod benchmarks/textmate/go.sum
 
       - name: Check Go formatting and static analysis
         shell: bash
@@ -111,6 +116,7 @@ jobs:
           CGO_ENABLED=0 go test ./...
           CGO_ENABLED=0 go build ./...
           (cd benchmarks/chroma && CGO_ENABLED=0 go test ./...)
+          (cd benchmarks/textmate && CGO_ENABLED=0 go test ./...)
 
       - name: Run race detector
         run: go test -race -count=1 ./...
@@ -164,3 +170,50 @@ jobs:
           tm_grammars_root="${TM_GRAMMARS_DIR%/packages/tm-grammars}"
           test "$(git -C "$tm_grammars_root" rev-parse HEAD)" = "$TM_GRAMMARS_REVISION"
           test -z "$(git -C "$tm_grammars_root" status --porcelain --untracked-files=all)"
+
+  performance:
+    name: Base vs PR performance
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Check out exact base commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .benchmark-base
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.25.1
+          cache-dependency-path: benchmarks/textmate/go.sum
+
+      - name: Compare base and PR performance
+        env:
+          BASE_DIR: ${{ github.workspace }}/.benchmark-base
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          COUNT: "3"
+          BENCH_TIME: 500ms
+          REPORT_FILE: ${{ runner.temp }}/performance-report.md
+        run: node benchmarks/compare-go-refs.mjs
+
+      - name: Create or update PR performance comment
+        if: >-
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPORT_FILE: ${{ runner.temp }}/performance-report.md
+        run: node benchmarks/upsert-performance-comment.mjs

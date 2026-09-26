@@ -46,6 +46,7 @@ directive.
 make test
 make bench
 make bench-compare   # textmate-go vs vscode-textmate vs Chroma
+make bench-compare-extended  # all core + extended language cases
 make lint
 CGO_ENABLED=0 go build ./...
 ```
@@ -72,12 +73,19 @@ required test rather than deferring part of the suite to a manual release step.
 | Themes | All 127 upstream theme tests against the reference adapter, a 72-file Go-vs-reference scope differential, and 72 isolated Go golden fixtures across 14 themes |
 | Differential tokenization | Exact token-text and full-scope-stack parity with vscode-textmate on an 82-file corpus, plus 48 deterministic edit/splice/UTF-8 fuzz cases; an extended 500-case gate has also passed |
 | Grammar corpus | Standalone tokenization of 166 files covering every embedded root, plus parsing and registry-loading all 260 pinned source grammars and scanning their 34,698 regex fields |
+| PR performance | All 20 core + extended cases compare the exact base and PR commits with textmate-go alone; CI updates one persistent PR comment with timings and allocations |
 
 See [`conformance/README.md`](conformance/README.md) for the harness commands,
 oracle behavior, fixture counts, and reproducibility details. The checked
 [`grammar-report` golden file](cmd/grammar-report/testdata/report.golden.md)
 records every known regex translation diagnostic rather than silently treating
 unsupported Oniguruma syntax as compatible.
+
+The PR performance comparison is a separate, parallel job. Benchmark and corpus
+failures are merge failures; timing deltas are reported but remain informational
+because shared GitHub runners do not provide stable enough timing for a hard
+regression threshold. See [`benchmarks/README.md`](benchmarks/README.md) for the
+groups, local reproduction command, and sticky-comment behavior.
 
 After an intentional regex translator or pinned-grammar change, review the
 compatibility difference and refresh that golden file from the repository root:
