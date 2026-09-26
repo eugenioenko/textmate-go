@@ -351,6 +351,23 @@ regexp2's interpreter. The earlier Phase 4 baseline is kept in
 
 See [`plan.md`](plan.md) for the implementation phases and conformance goals.
 
+## Acknowledgments and thanks
+
+This project would not exist without Microsoft's
+[`vscode-textmate`](https://github.com/microsoft/vscode-textmate), whose
+implementation defines the behavior that this Go port follows, and Shiki's
+[`textmate-grammars-themes`](https://github.com/shikijs/textmate-grammars-themes),
+which provides the pinned grammar corpus, source provenance, and license
+metadata used to build the optional embedded grammar package. Thanks also to
+the many language-extension and grammar authors whose work is collected there.
+
+The tokenizer relies on the work behind
+[`regexp2`](https://github.com/dlclark/regexp2) for the regular-expression
+features TextMate grammars require. Microsoft's
+[`vscode-oniguruma`](https://github.com/microsoft/vscode-oniguruma) provides an
+essential compatibility oracle. We are grateful to all of these projects and
+their contributors.
+
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
