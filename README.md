@@ -1,5 +1,7 @@
 # textmate-go
 
+[![CI](https://github.com/eugenioenko/textmate-go/actions/workflows/ci.yml/badge.svg)](https://github.com/eugenioenko/textmate-go/actions/workflows/ci.yml)
+
 `textmate-go` is a pure-Go port of Microsoft's
 [`vscode-textmate`](https://github.com/microsoft/vscode-textmate). It provides
 line-oriented TextMate grammar tokenization with an immutable state stack that
@@ -25,17 +27,18 @@ is reproduced in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
 
 TextMate grammars require lookbehind, backreferences, and position-sensitive
 anchors that Go's standard RE2-based `regexp` package cannot provide. This port
-uses `github.com/dlclark/regexp2/v2` v2.8.0 with RE2 compatibility mode disabled.
-The v2 line was selected for ordered mixed captures, current Unicode tables,
-bounded backtracking, and its Go 1.25 API. Oniguruma-only syntax is translated
-before compilation; unsupported constructs are recorded as diagnostics and the
-affected construct or pattern is safely degraded.
+uses the maintained `github.com/eugenioenko/regexp2/v2` v2.8.1 fork with RE2
+compatibility mode disabled. The v2 line was selected for ordered mixed
+captures, current Unicode tables, bounded backtracking, and its Go 1.25 API.
+Oniguruma-only syntax is translated before compilation; unsupported constructs
+are recorded as diagnostics and the affected construct or pattern is safely
+degraded.
 
-The current performance branch uses the maintained
-`github.com/eugenioenko/regexp2/v2` fork with a text-free capture-index API.
-This avoids constructing public match/group data that the tokenizer immediately
-discarded. The fork has its own module path, so downstream users receive it as
-a normal transitive dependency without a `replace` directive.
+The fork adds a text-free capture-index API and TextMate-oriented search
+optimizations. This avoids constructing public match/group data that the
+tokenizer immediately discarded. It has its own module path, so downstream
+users receive it as a normal transitive dependency without a `replace`
+directive.
 
 ## Development
 
@@ -52,11 +55,57 @@ conformance harness's `pnpm install`; see
 [`benchmarks/README.md`](benchmarks/README.md) for setup, options, and the
 corpus.
 
+## Verification and conformance
+
+The GitHub Actions workflow pins Go, Node, vscode-textmate,
+vscode-oniguruma, and the grammar corpus. Every push and pull request runs the
+routine gates below; the slower Go theme-golden suite is a required local or
+release gate and is also available through manual workflow dispatch.
+
+| Gate | Coverage |
+| --- | --- |
+| Go correctness | Pure-Go tests and builds for every package, followed by the race detector across every package |
+| Static checks | `gofmt`, `go vet`, golangci-lint, TypeScript type-checking, and generated-file cleanliness |
+| Native robustness | A bounded 10-second `FuzzTokenizeLine` run on every routine CI execution |
+| Upstream tokenization | 101 tests against the real vscode-textmate backend and the same 101 tests against Go: 95 upstream fixtures, two client tests, and four harness tests |
+| Themes | All 127 upstream theme tests against the reference adapter, a 72-file Go-vs-reference scope differential, and 72 isolated Go golden fixtures across 14 themes in the manual/release gate |
+| Differential tokenization | Exact token-text and full-scope-stack parity with vscode-textmate on an 82-file corpus, plus 48 deterministic edit/splice/UTF-8 fuzz cases; an extended 500-case gate has also passed |
+| Grammar corpus | Standalone tokenization of 166 files covering every embedded root, plus parsing and registry-loading all 260 pinned source grammars and scanning their 34,698 regex fields |
+
+See [`conformance/README.md`](conformance/README.md) for the harness commands,
+oracle behavior, fixture counts, and reproducibility details. The generated
+[`docs/grammar-report.md`](docs/grammar-report.md) records every known regex
+translation diagnostic rather than silently treating unsupported Oniguruma
+syntax as compatible.
+
 ## Embedded grammars
 
 The optional `grammars` subpackage embeds 124 license-reviewed grammar roots
 plus one MIT support grammar used for Markdown's inline HTML. Assets are
 individually compressed and loaded once on demand:
+
+- **A–D:** ActionScript, AutoHotkey, Angular HTML, Assembly, AWK, Ballerina,
+  Batch File, BibTeX, Bicep, C, C3, Chapel, Clojure, CMake, COBOL,
+  CoffeeScript, Common Lisp, Rocq, C++, Crystal, C#, CSS, CSV, D, Dart,
+  Desktop, Diff, Dockerfile, and dotEnv.
+- **E–H:** Elixir, Elm, Emacs Lisp, Erlang, Fennel, Fish, F#, GDScript,
+  Gherkin, Gleam, Go, GraphQL, Groovy, Handlebars, Haskell, Haxe, HashiCorp
+  HCL, HLSL, HTML, HTTP, and Hy.
+- **I–M:** INI, Java, JavaScript, Jinja, JSON, JSON with Comments, Jsonnet,
+  JSX, Julia, KDL, Kotlin, Lean 4, Less, Lua, Makefile, Markdown, Mojo, and
+  MoonBit.
+- **N–R:** Nix, nushell, Objective-C, Objective-C++, OCaml, Odin, OpenSCAD,
+  Pascal, Perl, PHP, PL/SQL, PowerQuery, PowerShell, Protocol Buffer 3, Puppet,
+  Python, QML, R, Windows Registry Script, reStructuredText, Ruby, and Rust.
+- **S–Z:** SAS, Sass, Scala, Scheme, SCSS, Shell, Shell Session, GNU Smalltalk,
+  Solidity, SQL, Stylus, Svelte, Swift, SystemVerilog, Systemd Units,
+  Terraform, TeX, TOML, TSX, Twig, TypeScript, Typst, V, Vala, Visual Basic,
+  Verilog, VHDL, Vim Script, Vue, WebAssembly, WGSL, XML, YAML, and Zig.
+
+The internal `html-derivative` grammar supporting Markdown is not counted as a
+separate language. Canonical IDs, aliases, filename mappings, scopes, source
+revisions, and licenses are recorded in
+[`grammars/MANIFEST.md`](grammars/MANIFEST.md).
 
 ```go
 import (
@@ -242,30 +291,31 @@ measurements.
 ## Performance
 
 Warm line-by-line tokenization from `make bench-compare`, in microseconds per
-line (fastest of five runs, Linux/amd64, Go 1.25.1, AMD Ryzen 7 6800H). The
-ratio is textmate-go's time over vscode-textmate's, so below 1 is faster.
-Chroma lexes each line from its root state, so its column is a throughput
-reference rather than an equivalent result. See
+line (2026-09-25, fastest of five runs, Linux/amd64, Go 1.25.1, AMD Ryzen 7
+6800H, regexp2 v2.8.1). Each ratio is textmate-go's time over the comparison
+engine, so below 1 is faster. Chroma lexes each line from its root state, so its
+column is a throughput reference rather than an equivalent result. See
 [`benchmarks/README.md`](benchmarks/README.md) for the method and corpus.
 
-| Case | textmate-go | allocs/line | vscode-textmate | Chroma | vs vscode-textmate |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| TSX | 33.7 | 42.6 | 19.6 | 17.0 | 1.71x |
-| HTML | 24.5 | 62.4 | 25.3 | 5.2 | 0.97x |
-| Go | 9.1 | 31.3 | 13.6 | 19.6 | 0.67x |
-| Markdown | 15.3 | 29.3 | 13.6 | 18.6 | 1.13x |
-| TypeScript | 85.7 | 74.0 | 55.6 | 25.5 | 1.54x |
-| JavaScript | 77.6 | 75.3 | 61.9 | 26.0 | 1.25x |
-| CSS | 32.5 | 53.7 | 71.1 | 11.1 | 0.46x |
-| JSON | 9.1 | 52.8 | 7.1 | 9.0 | 1.28x |
-| Python | 46.2 | 71.1 | 46.6 | 53.6 | 0.99x |
-| Rust | 27.3 | 48.6 | 30.5 | 29.2 | 0.89x |
-| Java | 60.8 | 57.3 | 38.4 | 34.6 | 1.58x |
-| C++ | 272.0 | 106.5 | 145.9 | 44.3 | 1.86x |
-| Ruby | 40.9 | 51.1 | 56.0 | 62.6 | 0.73x |
-| Shell | 27.8 | 86.7 | 30.5 | 22.2 | 0.91x |
+| Case | textmate-go | allocs/line | vscode-textmate | Chroma | vs JS | vs Chroma |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| TSX | 35.9 | 42.4 | 21.1 | 17.7 | 1.70x | 2.02x |
+| HTML | 23.3 | 62.2 | 27.1 | 5.4 | 0.86x | 4.35x |
+| Go | 9.8 | 31.3 | 14.2 | 20.4 | 0.69x | 0.48x |
+| Markdown | 17.3 | 29.3 | 15.7 | 19.7 | 1.10x | 0.88x |
+| TypeScript | 79.7 | 74.1 | 59.7 | 27.2 | 1.33x | 2.93x |
+| JavaScript | 69.7 | 75.2 | 68.2 | 27.8 | 1.02x | 2.51x |
+| CSS | 25.9 | 53.7 | 78.5 | 11.6 | 0.33x | 2.23x |
+| JSON | 8.8 | 52.8 | 7.9 | 9.8 | 1.12x | 0.90x |
+| Python | 46.6 | 71.1 | 48.9 | 55.4 | 0.95x | 0.84x |
+| Rust | 28.4 | 48.6 | 31.5 | 30.6 | 0.90x | 0.93x |
+| Java | 59.9 | 57.1 | 39.8 | 36.3 | 1.50x | 1.65x |
+| C++ | 265.5 | 106.3 | 162.9 | 46.2 | 1.63x | 5.75x |
+| Ruby | 41.6 | 51.1 | 58.7 | 63.3 | 0.71x | 0.66x |
+| Shell | 28.4 | 86.7 | 32.0 | 23.8 | 0.89x | 1.20x |
 
-C++ is the slowest case: its grammar's very large patterns backtrack heavily in
+textmate-go is faster than vscode-textmate in seven of the fourteen cases. C++
+is the slowest case: its grammar's very large patterns backtrack heavily in
 regexp2's interpreter. The earlier Phase 4 baseline is kept in
 [`docs/performance-baseline.md`](docs/performance-baseline.md).
 

@@ -21,9 +21,9 @@ Numeric capture references in `end` and `while` fields are replaced with a safe 
 | Registry load successes | 260 |
 | Grammar load failures | 0 |
 | Regex fields scanned | 34698 |
-| Patterns with diagnostics | 273 |
-| Expected unsupported-syntax diagnostics | 244 |
-| Pattern compile failures | 31 |
+| Patterns with diagnostics | 161 |
+| Expected unsupported-syntax diagnostics | 159 |
+| Pattern compile failures | 4 |
 | Other diagnostics | 0 |
 
 `unsupported_syntax` entries are known Oniguruma constructs that regexp2 cannot faithfully execute; the adapter degrades the affected construct or pattern and records it explicitly. `compile_error` entries are separate: translation completed, but regexp2 rejected the result. A static compile scan cannot produce match-time timeout or match-error diagnostics.
@@ -2320,282 +2320,12 @@ None.
 (?:((?<=\.)\b\w+)|\b(\w+))(?<brackets>\[(?:[^]\[]|(?:\[(?:[^]\[]|(?!))*]))*])?(?=\()
 ```
 
-### 128. `haskell.json` — `$.patterns[13].end`
+### 128. `haskell.json` — `$.repository["adt_constructor"].patterns[1].end`
 
 - Scope: `source.haskell`
 - Field: `end`
 - Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=(?<!')\bwhere\b(?!'))|(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=(?<!')\bwhere\b(?!'))|(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 129. `haskell.json` — `$.patterns[14].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(data|newtype)(?:\s+(instance))?\s+((?:(?!(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:=|--+)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])|\b(?<!')(?:where|deriving)\b(?!')|\{-).)*)(?=\b(?<!'')where\b(?!''))
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(data|newtype)(?:\s+(instance))?\s+((?:(?!(?<!
-```
-
-### 130. `haskell.json` — `$.patterns[14].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=(?<!')\bderiving\b(?!'))|(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=(?<!')\bderiving\b(?!'))|(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 131. `haskell.json` — `$.patterns[16].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(pattern)\s+(.*?)\s+(::|∷)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(pattern)\s+(.*?)\s+(::|∷)(?!
-```
-
-### 132. `haskell.json` — `$.patterns[16].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 133. `haskell.json` — `$.patterns[17].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 134. `haskell.json` — `$.patterns[18].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(data|newtype)(?:\s+(family|instance))?\s+(((?!(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:=|--+)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])|\b(?<!')(?:where|deriving)\b(?!')|\{-).)*)
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(data|newtype)(?:\s+(family|instance))?\s+(((?!(?<!
-```
-
-### 135. `haskell.json` — `$.patterns[18].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 136. `haskell.json` — `$.patterns[19].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(type)\s+(family)\b(?!')(((?!(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:=|--+)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])|\b(?<!')where\b(?!')|\{-).)*)
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(type)\s+(family)\b(?!')(((?!(?<!
-```
-
-### 137. `haskell.json` — `$.patterns[19].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 138. `haskell.json` — `$.patterns[20].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(type)(?:\s+(instance))?\s+(((?!(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:=|--+|::|∷)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])|\{-).)*)
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(type)(?:\s+(instance))?\s+(((?!(?<!
-```
-
-### 139. `haskell.json` — `$.patterns[20].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 140. `haskell.json` — `$.patterns[21].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=\b(?<!')(where)\b(?!'))|(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=\b(?<!')(where)\b(?!'))|(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 141. `haskell.json` — `$.patterns[22].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=\b(?<!')(where)\b(?!'))|(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=\b(?<!')(where)\b(?!'))|(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 142. `haskell.json` — `$.repository["adt_constructor"].patterns[1].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:(=)|(\|))(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 143. `haskell.json` — `$.repository["adt_constructor"].patterns[1].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
+- Reason: oniguruma subroutine call &#34;\\g&lt;paren&gt;&#34; was neutralized
 - Original pattern:
 
 ```text
@@ -2605,213 +2335,15 @@ None.
 - Adapter translation:
 
 ```text
-(?:\G|(?:(?<![\s\S])|^(?=[\s\S])))\s*(?:(?<!')\b(['._\p{Ll}\p{Lu}\p{Lt}\d]+)|('?(?<paren>\((?:[^()]?|(?!))*\)))|('?(?<brac>\((?:[^]\[]?|(?!))*])))\s*(?:(?<!
+(?:\G|(?:(?<![\s\S])|^(?=[\s\S])))\s*(?:(?<!')\b(['._\p{Ll}\p{Lu}\p{Lt}\d]+)|('?(?<paren>\((?:[^()]?|(?!))*\)))|('?(?<brac>\((?:[^]\[]?|(?!))*])))\s*(?:(?<!(?:(?=[^]"'(),;\[_`{}])[\p{S}\p{P}]))(:(?:(?=[^]"'(),;\[_`{}])[\p{S}\p{P}])*)|(`)([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)(`))|(?<!')\b([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:(?:(?=[^]"'(),;\[_`{}])[\p{S}\p{P}])*)\s*(\))
 ```
 
-### 144. `haskell.json` — `$.repository["comments"].patterns[0].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=^(?!\1--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])))
-```
-
-- Adapter translation:
-
-```text
-(?=(?:(?<![\s\S])|^(?=[\s\S]))(?!x--+(?!
-```
-
-### 145. `haskell.json` — `$.repository["comments"].patterns[3].begin`
+### 129. `haskell.json` — `$.repository["fun_decl"].begin`
 
 - Scope: `source.haskell`
 - Field: `begin`
 - Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(^[\t ]+)?(?=--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]))
-```
-
-- Adapter translation:
-
-```text
-((?:(?<![\s\S])|^(?=[\s\S]))[\t ]+)?(?=--+(?!
-```
-
-### 146. `haskell.json` — `$.repository["context"].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(.*)(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(=>|⇒)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])
-```
-
-- Adapter translation:
-
-```text
-(.*)(?<!
-```
-
-### 147. `haskell.json` — `$.repository["deriving"].patterns[0].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 148. `haskell.json` — `$.repository["double_colon"].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\s*(::|∷)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])\s*
-```
-
-- Adapter translation:
-
-```text
-\s*(::|∷)(?!
-```
-
-### 149. `haskell.json` — `$.repository["export_constructs"].patterns[1].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:
-```
-
-### 150. `haskell.json` — `$.repository["export_constructs"].patterns[2].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(
-```
-
-### 151. `haskell.json` — `$.repository["ffi"].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 152. `haskell.json` — `$.repository["ffi"].patterns[2].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=(::|∷)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]))
-```
-
-- Adapter translation:
-
-```text
-(?=(::|∷)(?!
-```
-
-### 153. `haskell.json` — `$.repository["ffi"].patterns[2].patterns[1].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(?<!')(safe|unsafe|interruptible)\b(?!')\s*("(?:\\"|[^"])*")?\s*(?:\b(?<!'')([_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)\b(?!')|\(\s*(?!--+\))([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*\))
-```
-
-- Adapter translation:
-
-```text
-\b(?<!')(safe|unsafe|interruptible)\b(?!')\s*("(?:\\"|[^"])*")?\s*(?:\b(?<!'')([_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)\b(?!')|\(\s*(?!--+\))(
-```
-
-### 154. `haskell.json` — `$.repository["ffi"].patterns[2].patterns[4].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(?<!'')([_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)\b(?!')|(\()\s*(?!--+\))([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-\b(?<!'')([_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)\b(?!')|(\()\s*(?!--+\))(
-```
-
-### 155. `haskell.json` — `$.repository["fun_decl"].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
+- Reason: oniguruma subroutine call &#34;\\g&lt;fn&gt;&#34; was neutralized
 - Original pattern:
 
 ```text
@@ -2821,100 +2353,10 @@ None.
 - Adapter translation:
 
 ```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(?<fn>(?:[_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*#*|\(\s*(?!--+\))
+(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(?<fn>(?:[_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*#*|\(\s*(?!--+\))(?:(?=[^]"'(),:;\[_`{}])[\p{S}\p{P}])(?:(?=[^]"'(),;\[_`{}])[\p{S}\p{P}])*\s*\))(?:\s*,\s*(?!))?)\s*(?<!(?:(?=[^]"'),;_`}])[\p{S}\p{P}]))(::|∷)(?!(?:(?=[^"'(,;\[_`{])[\p{S}\p{P}]))
 ```
 
-### 156. `haskell.json` — `$.repository["fun_decl"].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])((<-|←)|(=)|(-<|↢)|(-<<|⤛))([]"'(),;\[_`{}[^\p{S}\p{P}]]))|(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=(?<!
-```
-
-### 157. `haskell.json` — `$.repository["gadt_constructor"].patterns[0].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(?:\b((?<!')[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]*)\s*(\)))
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(?:\b((?<!')[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:
-```
-
-### 158. `haskell.json` — `$.repository["gadt_constructor"].patterns[0].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=\b(?<!'')deriving\b(?!'))|(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=\b(?<!'')deriving\b(?!'))|(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 159. `haskell.json` — `$.repository["gadt_constructor"].patterns[1].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b((?<!')[\p{Lu}\p{Lt}][_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]*)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-\b((?<!')[\p{Lu}\p{Lt}][_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(:
-```
-
-### 160. `haskell.json` — `$.repository["infix_op"].patterns[0].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-((?:(?<!'')('')?[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*\.)*)(#+|[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+(?<!#))
-```
-
-- Adapter translation:
-
-```text
-((?:(?<!'')('')?[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*\.)*)(#+|
-```
-
-### 161. `haskell.json` — `$.repository["module_name"].match`
+### 130. `haskell.json` — `$.repository["module_name"].match`
 
 - Scope: `source.haskell`
 - Field: `match`
@@ -2932,313 +2374,7 @@ None.
 (?<conid>[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(\.(?!))?)
 ```
 
-### 162. `haskell.json` — `$.repository["overloaded_label"].patterns[0].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[_\p{Ll}\p{Lu}\p{Lt}\d\p{S}\p{P}]&&[^(,;\[`{]])(#)(?:("(?:\\"|[^"])*")|['._\p{Ll}\p{Lu}\p{Lt}\d]+)
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 163. `haskell.json` — `$.repository["prefix_op"].patterns[0].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(\()\s*(?!(?:--+|\.\.)\))(#+|[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+(?<!#))\s*(\))
-```
-
-- Adapter translation:
-
-```text
-(\()\s*(?!(?:--+|\.\.)\))(#+|
-```
-
-### 164. `haskell.json` — `$.repository["record_decl_field"].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-([_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-([_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(
-```
-
-### 165. `haskell.json` — `$.repository["record_field"].patterns[0].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-([_\p{Ll}\p{Lu}]['._\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-([_\p{Ll}\p{Lu}]['._\p{Ll}\p{Lu}\p{Lt}\d]*)|(\()\s*(
-```
-
-### 166. `haskell.json` — `$.repository["record_wildcard"].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(\.\.)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 167. `haskell.json` — `$.repository["reserved_symbol"].patterns[0].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:(\.\.)|(:)|(=)|(\\)|(\|)|(<-|←)|(->|→)|(-<|↢)|(-<<|⤛)|(>-|⤚)|(>>-|⤜)|(∀))(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 168. `haskell.json` — `$.repository["reserved_symbol"].patterns[1].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<=[[_\p{Ll}\p{Lu}\p{Lt}\d\p{S}\p{P}]&&[^#,;\[`{]])(#+)(?![[_\p{Ll}\p{Lu}\p{Lt}\d\p{S}\p{P}]&&[^]),;`}]])
-```
-
-- Adapter translation:
-
-```text
-(?<=
-```
-
-### 169. `haskell.json` — `$.repository["reserved_symbol"].patterns[3].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[_\p{Ll}\p{Lu}\p{Lt}\d\p{S}\p{P}]&&[^(,;\[`{]])(?:(~)|(!)|(-)|(\$)|(\$\$))(?=[(\[_{\p{Ll}\p{Lu}\p{Lt}\d])
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 170. `haskell.json` — `$.repository["role_annotation"].patterns[0].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=[;}])|^(?!\1\s+\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$))
-```
-
-- Adapter translation:
-
-```text
-(?=[;}])|(?:(?<![\s\S])|^(?=[\s\S]))(?!x\s+\S|\s*(?:$|\{-[^@]|--+(?!
-```
-
-### 171. `haskell.json` — `$.repository["start_type_signature"].patterns[0].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-^(\s*)(::|∷)(?![[\p{S}\p{P}]&&[^"'(,;\[_`{]])\s*
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(\s*)(::|∷)(?!
-```
-
-### 172. `haskell.json` — `$.repository["start_type_signature"].patterns[0].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=#?\)|[],]|(?<!')\b(in|then|else|of)\b(?!')|(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:([\\λ])|(<-|←)|(=)|(-<|↢)|(-<<|⤛))([]"'(),;\[_`{}[^\p{S}\p{P}]])|([#@])-}|(?=[;}])|^(?!\1\s*\S|\s*(?:$|\{-[^@]|--+(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]).*$)))
-```
-
-- Adapter translation:
-
-```text
-(?=#?\)|[],]|(?<!')\b(in|then|else|of)\b(?!')|(?<!
-```
-
-### 173. `haskell.json` — `$.repository["start_type_signature"].patterns[1].begin`
-
-- Scope: `source.haskell`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[\p{S}\p{P}]&&[^"'(,;\[_`{]])(::|∷)(?![[\p{S}\p{P}]&&[^"'(,;\[_`{]])
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 174. `haskell.json` — `$.repository["start_type_signature"].patterns[1].end`
-
-- Scope: `source.haskell`
-- Field: `end`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?=#?\)|[],]|\b(?<!')(in|then|else|of)\b(?!')|([#@])-}|(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(?:([\\λ])|(<-|←)|(=)|(-<|↢)|(-<<|⤛))([]"'(),;\[_`{}[^\p{S}\p{P}]])|(?=[;}])|$)
-```
-
-- Adapter translation:
-
-```text
-(?=#?\)|[],]|\b(?<!')(in|then|else|of)\b(?!')|([#@])-}|(?<!
-```
-
-### 175. `haskell.json` — `$.repository["type_constructor"].patterns[1].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(')?(\()\s*((?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*\.)*)([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)\s*(\))
-```
-
-- Adapter translation:
-
-```text
-(')?(\()\s*((?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*\.)*)(
-```
-
-### 176. `haskell.json` — `$.repository["type_operator"].patterns[0].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?:(?<!')('))?((?:\b[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*\.)*)(?![#@]?-})(#+|[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+(?<!#))
-```
-
-- Adapter translation:
-
-```text
-(?:(?<!')('))?((?:\b[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*\.)*)(?![#@]?-})(#+|
-```
-
-### 177. `haskell.json` — `$.repository["type_signature"].patterns[8].match`
-
-- Scope: `source.haskell`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(::|∷)(?![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])
-```
-
-- Adapter translation:
-
-```text
-(::|∷)(?!
-```
-
-### 178. `julia.json` — `$.repository["keyword"].patterns[9].match`
-
-- Scope: `source.julia`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-@(\.|[_ⁱ-⁾₁-₎℘℮⅀-⅄∂∅∆∇∎-∑∞-∢∫-∳∿⊤⊥⊾-⋃◸-◿♯⟀⟁⟘⟙⦛-⦴⨀-⨆⨉-⨖⨛⨜゛゜𝛁𝛛𝛻𝜕𝜵𝝏𝝯𝞉𝞩𝟃𝟎-𝟡[:alpha:]\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Sc}[^←-⇿\P{So}]][!_′-‷⁗ⁱ-⁾₁-₎℘℮⅀-⅄∂∅∆∇∎-∑∞-∢∫-∳∿⊤⊥⊾-⋃◸-◿♯⟀⟁⟘⟙⦛-⦴⨀-⨆⨉-⨖⨛⨜゛゜𝛁𝛛𝛻𝜕𝜵𝝏𝝯𝞉𝞩𝟃𝟎-𝟡[:word:]\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Sc}[^\x01-¡\P{Mn}][^\x01-¡\P{Mc}][^\x01-¡\D][^\x01-¡\P{Pc}][^\x01-¡\P{Sk}][^\x01-¡\P{Me}][^\x01-¡\P{No}][^←-⇿\P{So}]]*|[[\p{S}\p{P}]&&[^@\s]]+)
-```
-
-- Adapter translation:
-
-```text
-@(\.|(?:[_ⁱ-⁾₁-₎℘℮⅀-⅄∂∅∆∇∎-∑∞-∢∫-∳∿⊤⊥⊾-⋃◸-◿♯⟀⟁⟘⟙⦛-⦴⨀-⨆⨉-⨖⨛⨜゛゜𝛁𝛛𝛻𝜕𝜵𝝏𝝯𝞉𝞩𝟃𝟎-𝟡\p{L}\p{Nl}\p{Other_Alphabetic}\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Sc}]|[\p{So}-[←-⇿]])(?:[!_′-‷⁗ⁱ-⁾₁-₎℘℮⅀-⅄∂∅∆∇∎-∑∞-∢∫-∳∿⊤⊥⊾-⋃◸-◿♯⟀⟁⟘⟙⦛-⦴⨀-⨆⨉-⨖⨛⨜゛゜𝛁𝛛𝛻𝜕𝜵𝝏𝝯𝞉𝞩𝟃𝟎-𝟡\p{L}\p{M}\p{N}\p{Pc}\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Sc}]|[\p{Mn}-[\x01-¡]]|[\p{Mc}-[\x01-¡]]|[^\x01-¡\D]|[\p{Pc}-[\x01-¡]]|[\p{Sk}-[\x01-¡]]|[\p{Me}-[\x01-¡]]|[\p{No}-[\x01-¡]]|[\p{So}-[←-⇿]])*|
-```
-
-### 179. `kotlin.json` — `$.repository["class-declaration"].match`
+### 131. `kotlin.json` — `$.repository["class-declaration"].match`
 
 - Scope: `source.kotlin`
 - Field: `match`
@@ -3256,7 +2392,7 @@ None.
 \b(class|(?:fun\s+)?interface)\s+(\b\w+\b|`[^`]+`)\s*(?<GROUP><([^<>]|(?!))+>)?
 ```
 
-### 180. `kotlin.json` — `$.repository["function"].match`
+### 132. `kotlin.json` — `$.repository["function"].match`
 
 - Scope: `source.kotlin`
 - Field: `match`
@@ -3274,7 +2410,7 @@ None.
 \b(fun)\b\s*(?<GROUP><([^<>]|(?!))+>)?\s*(?:(?:(\w+)\.)?(\b\w+\b|`[^`]+`))?
 ```
 
-### 181. `kotlin.json` — `$.repository["function-call"].match`
+### 133. `kotlin.json` — `$.repository["function-call"].match`
 
 - Scope: `source.kotlin`
 - Field: `match`
@@ -3292,7 +2428,7 @@ None.
 \??\.?(\b\w+\b|`[^`]+`)\s*(?<GROUP><([^<>]|(?!))+>)?\s*(?=[({])
 ```
 
-### 182. `kotlin.json` — `$.repository["type-alias"].match`
+### 134. `kotlin.json` — `$.repository["type-alias"].match`
 
 - Scope: `source.kotlin`
 - Field: `match`
@@ -3310,7 +2446,7 @@ None.
 \b(typealias)\s+(\b\w+\b|`[^`]+`)\s*(?<GROUP><([^<>]|(?!))+>)?
 ```
 
-### 183. `kotlin.json` — `$.repository["type-annotation"].match`
+### 135. `kotlin.json` — `$.repository["type-annotation"].match`
 
 - Scope: `source.kotlin`
 - Field: `match`
@@ -3328,7 +2464,7 @@ None.
 (?<![:?]):\s*([?\w\s]|->|(?<GROUP>[(<]([^"'()<>]|(?!))+[)>]))+
 ```
 
-### 184. `kotlin.json` — `$.repository["variable-declaration"].match`
+### 136. `kotlin.json` — `$.repository["variable-declaration"].match`
 
 - Scope: `source.kotlin`
 - Field: `match`
@@ -3346,7 +2482,7 @@ None.
 \b(va[lr])\b\s*(?<GROUP><([^<>]|(?!))+>)?
 ```
 
-### 185. `markdown.json` — `$.repository["bold"].begin`
+### 137. `markdown.json` — `$.repository["bold"].begin`
 
 - Scope: `text.html.markdown`
 - Field: `begin`
@@ -3364,7 +2500,7 @@ None.
 (?<open>(\*\*(?=\w)|(?<!\w)\*\*|(?<!\w)\b__))(?=\S)(?=(?>(<(?>[^>]*)>|(?<raw>`+)(?>([^`]|(?!(?<!`)\k<raw>(?!`))`)*)\k<raw>|\\(?>[-\]!#(-+.>\[\\_`{}]?)|\[((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*)](( ?\[(?>[^]]*)])|(\((?>[\t ]*)<?(.*?)>?(?>[\t ]*)((?<title>["'])(.*?)\k<title>)?\))))|(?!(?<=\S)\k<open>).)+)(?<=\S)(?=__\b|\*\*)\k<open>)
 ```
 
-### 186. `markdown.json` — `$.repository["image-inline"].match`
+### 138. `markdown.json` — `$.repository["image-inline"].match`
 
 - Scope: `text.html.markdown`
 - Field: `match`
@@ -3382,7 +2518,7 @@ None.
 (!\[)((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*))(])(\()[\t ]*((<)((?:\\[<>]|[^\n<>])*)(>)|((?<url>(?>[^()\s]+)|\((?!)*\))*))[\t ]*(?:((\().+?(\)))|((").+?("))|((').+?(')))?\s*(\))
 ```
 
-### 187. `markdown.json` — `$.repository["image-ref"].match`
+### 139. `markdown.json` — `$.repository["image-ref"].match`
 
 - Scope: `text.html.markdown`
 - Field: `match`
@@ -3400,7 +2536,7 @@ None.
 (!\[)((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*))(]) ?(\[)(.*?)(])
 ```
 
-### 188. `markdown.json` — `$.repository["italic"].begin`
+### 140. `markdown.json` — `$.repository["italic"].begin`
 
 - Scope: `text.html.markdown`
 - Field: `begin`
@@ -3418,7 +2554,7 @@ None.
 (?<open>(\*(?=\w)|(?<!\w)\*|(?<!\w)\b_))(?=\S)(?=(?>(<(?>[^>]*)>|(?<raw>`+)(?>([^`]|(?!(?<!`)\k<raw>(?!`))`)*)\k<raw>|\\(?>[-\]!#(-+.>\[\\_`{}]?)|\[((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*)](( ?\[(?>[^]]*)])|(\((?>[\t ]*)<?(.*?)>?(?>[\t ]*)((?<title>["'])(.*?)\k<title>)?\))))|\k<open>\k<open>|(?!(?<=\S)\k<open>).)+)(?<=\S)(?=_\b|\*)\k<open>)
 ```
 
-### 189. `markdown.json` — `$.repository["link-inline"].match`
+### 141. `markdown.json` — `$.repository["link-inline"].match`
 
 - Scope: `text.html.markdown`
 - Field: `match`
@@ -3436,7 +2572,7 @@ None.
 (\[)((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*))(])(\()[\t ]*((<)((?:\\[<>]|[^\n<>])*)(>)|((?<url>(?>[^()\s]+)|\((?!)*\))*))[\t ]*(?:((\()[^()]*(\)))|((")[^"]*("))|((')[^']*(')))?\s*(\))
 ```
 
-### 190. `markdown.json` — `$.repository["link-ref"].match`
+### 142. `markdown.json` — `$.repository["link-ref"].match`
 
 - Scope: `text.html.markdown`
 - Field: `match`
@@ -3454,7 +2590,7 @@ None.
 (?<![]\\])(\[)((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*))(])(\[)((?>[^]]*))(])
 ```
 
-### 191. `markdown.json` — `$.repository["link-ref-literal"].match`
+### 143. `markdown.json` — `$.repository["link-ref-literal"].match`
 
 - Scope: `text.html.markdown`
 - Field: `match`
@@ -3472,25 +2608,7 @@ None.
 (?<![]\\])(\[)((?>(?<square>[^]\[\\]|\\.|\[(?>(?:[^]\[\\]|\\.|\[(?>(?!)*)])*)])*))(]) ?(\[)(])
 ```
 
-### 192. `matlab.json` — `$.repository["numbers"].match`
-
-- Scope: `source.matlab`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<=[(*-\-/:=\[\\{\s]|^)\d*\.?\d+([Ee][-+]?\d)?([0-9&&[^.]])*([ij])?\b
-```
-
-- Adapter translation:
-
-```text
-(?<=[(*-\-/:=\[\\{\s]|(?:(?<![\s\S])|^(?=[\s\S])))\d*\.?\d+([Ee][-+]?\d)?(
-```
-
-### 193. `mdx.json` — `$.repository["commonmark-definition"].match`
+### 144. `mdx.json` — `$.repository["commonmark-definition"].match`
 
 - Scope: `source.mdx`
 - Field: `match`
@@ -3508,7 +2626,7 @@ None.
 (?:(?:(?<![\s\S])|^(?=[\s\S]))|\G)[\t ]*(\[)((?:[^]\[\\]|\\[]\[\\]?)+?)(])(:)[\t ]*(?:(<)((?:[^\n<>\\]|\\[<>\\]?)*)(>)|((?!)))(?:[\t ]+(?:(")((?:[^"\\]|\\["\\]?)*)(")|(')((?:[^'\\]|\\['\\]?)*)(')|(\()((?:[^)\\]|\\[)\\]?)*)(\))))?$((?!)){0}
 ```
 
-### 194. `mdx.json` — `$.repository["commonmark-label-end"].patterns[0].match`
+### 145. `mdx.json` — `$.repository["commonmark-label-end"].patterns[0].match`
 
 - Scope: `source.mdx`
 - Field: `match`
@@ -3526,7 +2644,7 @@ None.
 (])(\()[\t ]*(?:(?:(<)((?:[^\n<>\\]|\\[<>\\]?)*)(>)|((?!)))(?:[\t ]+(?:(")((?:[^"\\]|\\["\\]?)*)(")|(')((?:[^'\\]|\\['\\]?)*)(')|(\()((?:[^)\\]|\\[)\\]?)*)(\))))?)?[\t ]*(\))((?!)){0}
 ```
 
-### 195. `mdx.json` — `$.repository["extension-gfm-autolink-literal"].patterns[0].match`
+### 146. `mdx.json` — `$.repository["extension-gfm-autolink-literal"].patterns[0].match`
 
 - Scope: `source.mdx`
 - Field: `match`
@@ -3544,7 +2662,7 @@ None.
 (?<=(?:(?<![\s\S])|^(?=[\s\S]))|[]\t\n\r (*\[_~])(?=(?i:www)\.[^\n\r])(?:(?:[-\p{L}\p{N}]|[._](?![!"')*,.:;<?_~]*(?:[<\s]|][\t\n (\[])))+(?!)?)?((?!)){0}
 ```
 
-### 196. `mdx.json` — `$.repository["extension-gfm-autolink-literal"].patterns[1].match`
+### 147. `mdx.json` — `$.repository["extension-gfm-autolink-literal"].patterns[1].match`
 
 - Scope: `source.mdx`
 - Field: `match`
@@ -3562,7 +2680,7 @@ None.
 (?<=(?:(?<![\s\S])|^(?=[\s\S]))|[^A-Za-z])(?i:https?://)(?=[\p{L}\p{N}])(?:(?:[-\p{L}\p{N}]|[._](?![!"')*,.:;<?_~]*(?:[<\s]|][\t\n (\[])))+(?!)?)?((?!)){0}
 ```
 
-### 197. `powershell.json` — `$.repository["unicodeEscape"].patterns[0].match`
+### 148. `powershell.json` — `$.repository["unicodeEscape"].patterns[0].match`
 
 - Scope: `source.powershell`
 - Field: `match`
@@ -3580,19 +2698,7 @@ None.
 `u\{(?:(?:10)?([0-9A-Fa-f]){1,4}|0?(?!){1,5})}
 ```
 
-### 198. `purescript.json` — `$.patterns[30].match`
-
-- Scope: `source.purescript`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+
-```
-
-### 199. `purescript.json` — `$.repository["double_colon_parens"].patterns[0].match`
+### 149. `purescript.json` — `$.repository["double_colon_parens"].patterns[0].match`
 
 - Scope: `source.purescript`
 - Field: `match`
@@ -3610,55 +2716,7 @@ None.
 \((?<paren>(?:[^()]|\((?!)\))*)(::|∷)(?<paren2>(?:[^()}]|\((?!)\))*)\)
 ```
 
-### 200. `purescript.json` — `$.repository["infix_op"].patterns[0].match`
-
-- Scope: `source.purescript`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\((?!--+\))[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+\)
-```
-
-- Adapter translation:
-
-```text
-\((?!--+\))
-```
-
-### 201. `purescript.json` — `$.repository["infix_op_declaration"].patterns[0].patterns[3].match`
-
-- Scope: `source.purescript`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-([[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+)
-```
-
-- Adapter translation:
-
-```text
-(
-```
-
-### 202. `purescript.json` — `$.repository["type_signature"].patterns[11].match`
-
-- Scope: `source.purescript`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[[\p{S}\p{P}]&&[^]"'(),;\[_`{}]]+
-```
-
-### 203. `purescript.json` — `$.repository["type_signature"].patterns[1].match`
+### 150. `purescript.json` — `$.repository["type_signature"].patterns[1].match`
 
 - Scope: `source.purescript`
 - Field: `match`
@@ -3670,43 +2728,7 @@ None.
 \((?<classConstraints>([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*)\s+(?<classConstraint>(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*|(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*\.)?[_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)(?:\s*\s+\s*(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*|(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*\.)?[_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*))*)(?:\s*,\s*([\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*)\s+(?<classConstraint>(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*|(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*\.)?[_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)(?:\s*\s+\s*(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*|(?:[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*(?:\.[\p{Lu}\p{Lt}]['_\p{Ll}\p{Lu}\p{Lt}\d]*)*\.)?[_\p{Ll}]['_\p{Ll}\p{Lu}\p{Lt}\d]*))*))*)\)\s*(=>|<=|[⇐⇒])
 ```
 
-### 204. `purescript.json` — `$.repository["type_signature"].patterns[3].match`
-
-- Scope: `source.purescript`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(->|→)
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 205. `purescript.json` — `$.repository["type_signature"].patterns[4].match`
-
-- Scope: `source.purescript`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[\p{S}\p{P}]&&[^]"'(),;\[_`{}]])(=>|⇒)
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 206. `razor.json` — `$.repository["catch-condition"].patterns[0].match`
+### 151. `razor.json` — `$.repository["catch-condition"].patterns[0].match`
 
 - Scope: `text.aspnetcorerazor`
 - Field: `match`
@@ -3724,7 +2746,7 @@ None.
 (?<type-name>(?:(?:(?<identifier>@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*::\s*)?(?<name-and-type-args>(?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*(?<type-args>\s*<(?:[^<>]|(?!))+>\s*)?)(?:\s*\.\s*(?!))*|(?<tuple>\s*\((?:[^()]|(?!))+\)))(?:\s*\?\s*)?(?:\s*\[(?:\s*,\s*)*]\s*)*)\s*(?:((?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*))\b)?
 ```
 
-### 207. `razor.json` — `$.repository["foreach-condition"].patterns[0].match`
+### 152. `razor.json` — `$.repository["foreach-condition"].patterns[0].match`
 
 - Scope: `text.aspnetcorerazor`
 - Field: `match`
@@ -3742,7 +2764,7 @@ None.
 (?:\b(var)\b|(?<type-name>(?:(?:(?<identifier>@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*::\s*)?(?<name-and-type-args>(?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*(?<type-args>\s*<(?:[^<>]|(?!))+>\s*)?)(?:\s*\.\s*(?!))*|(?<tuple>\s*\((?:[^()]|(?!))+\)))(?:\s*\?\s*)?(?:\s*\[(?:\s*,\s*)*]\s*)*))\s+((?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*))\s+\b(in)\b
 ```
 
-### 208. `razor.json` — `$.repository["foreach-condition"].patterns[1].match`
+### 153. `razor.json` — `$.repository["foreach-condition"].patterns[1].match`
 
 - Scope: `text.aspnetcorerazor`
 - Field: `match`
@@ -3760,439 +2782,7 @@ None.
 (?:\b(var)\b\s*)?(?<tuple>\((?:[^()]|(?!))+\))\s+\b(in)\b
 ```
 
-### 209. `stata.json` — `$.patterns[23].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\s*(pr(o(?:gram?|gr?|))?)\s+((di(r)?|drop|l(i(?:st?|))?)\s+)([\w&&[^0-9]]\w{0,31})
-```
-
-- Adapter translation:
-
-```text
-\s*(pr(o(?:gram?|gr?|))?)\s+((di(r)?|drop|l(i(?:st?|))?)\s+)(
-```
-
-### 210. `stata.json` — `$.patterns[24].patterns[2].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 211. `stata.json` — `$.patterns[25].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(form(at?)?)\s*([\w&&[^0-9]]\w{0,31})*\s*(%)(-)?(0)?([0-9]+)(.)([0-9]+)([efg])(c)?
-```
-
-- Adapter translation:
-
-```text
-\b(form(at?)?)\s*(
-```
-
-### 212. `stata.json` — `$.patterns[33].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(la(b(?:el?|))?)\s+(var(i(?:able?|ab?|))?)\s+([\w&&[^0-9]]\w{0,31})\s+(`")(.+)("')
-```
-
-- Adapter translation:
-
-```text
-\b(la(b(?:el?|))?)\s+(var(i(?:able?|ab?|))?)\s+(
-```
-
-### 213. `stata.json` — `$.patterns[34].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(la(b(?:el?|))?)\s+(var(i(?:able?|ab?|))?)\s+([\w&&[^0-9]]\w{0,31})\s+(")(.+)(")
-```
-
-- Adapter translation:
-
-```text
-\b(la(b(?:el?|))?)\s+(var(i(?:able?|ab?|))?)\s+(
-```
-
-### 214. `stata.json` — `$.repository["ascii-regex-functions"].patterns[0].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 215. `stata.json` — `$.repository["ascii-regex-functions"].patterns[1].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 216. `stata.json` — `$.repository["ascii-regex-functions"].patterns[2].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 217. `stata.json` — `$.repository["ascii-regex-functions"].patterns[2].captures["9"].patterns[6].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 218. `stata.json` — `$.repository["ascii-regex-functions"].patterns[3].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 219. `stata.json` — `$.repository["ascii-regex-functions"].patterns[3].captures["8"].patterns[6].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 220. `stata.json` — `$.repository["factorvariables"].patterns[0].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b([cio])\.(?=[\w&&[^0-9]]|\([\w&&[^0-9]])
-```
-
-- Adapter translation:
-
-```text
-\b([cio])\.(?=
-```
-
-### 221. `stata.json` — `$.repository["factorvariables"].patterns[1].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(i?b)((\d+)|n)\.(?=[\w&&[^0-9]]|\([\w&&[^0-9]])
-```
-
-- Adapter translation:
-
-```text
-\b(i?b)((\d+)|n)\.(?=
-```
-
-### 222. `stata.json` — `$.repository["factorvariables"].patterns[2].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(i?b)(\()(#\d+|first|last|freq)(\))\.(?=[\w&&[^0-9]]|\([\w&&[^0-9]])
-```
-
-- Adapter translation:
-
-```text
-\b(i?b)(\()(#\d+|first|last|freq)(\))\.(?=
-```
-
-### 223. `stata.json` — `$.repository["factorvariables"].patterns[3].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(i?o?)(\d+)\.(?=[\w&&[^0-9]]|\([\w&&[^0-9]])
-```
-
-- Adapter translation:
-
-```text
-\b(i?o?)(\d+)\.(?=
-```
-
-### 224. `stata.json` — `$.repository["factorvariables"].patterns[4].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b(i?o?)(\()(.*?)(\))(\.)(?=[\w&&[^0-9]]|\([\w&&[^0-9]])
-```
-
-- Adapter translation:
-
-```text
-\b(i?o?)(\()(.*?)(\))(\.)(?=
-```
-
-### 225. `stata.json` — `$.repository["functions"].patterns[0].begin`
-
-- Scope: `source.stata`
-- Field: `begin`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-\b((abbrev|abs|acosh??|asinh??|atan2??|atanh|autocode|betaden|binomialp??|binomialtail|binormalbofd|byteorder|c|cauchy|cauchyden|cauchytail|Cdhms|ceil|char|chi2|chi2den|chi2tail|Chms|cholesky|chop|clip|clock|Clock|cloglog|Cmdyhms|cofC|Cofc|cofd|Cofd|coleqnumb|collatorlocale|collatorversion|colnfreeparms|colnumb|colsof|comb|cond|corr|cosh??|daily|date|day|det|dgammapda|dgammapdada|dgammapdadx|dgammapdx|dgammapdxdx|dhms|diag|diag0cnt|digamma|dofb|dofc|dofC|dofh|dofm|dofq|dofw|dofy|dow|doy|dunnettprob|el??|epsdouble|epsfloat|exp|exponential|exponentialden|exponentialtail|F|Fden|fileexists|fileread|filereaderror|filewrite|float|floor|fmtwidth|Ftail|gammaden|gammap|gammaptail|get|hadamard|halfyear|halfyearly|hhC??|hms|hofd|hours|hypergeometricp??|I|ibeta|ibetatail|igaussian|igaussianden|igaussiantail|indexnot|inlist|inrange|int|inv|invbinomial|invbinomialtail|invcauchy|invcauchytail|invchi2|invchi2tail|invcloglog|invdunnettprob|invexponential|invexponentialtail|invF|invFtail|invgammap|invgammaptail|invibeta|invibetatail|invigaussian|invigaussiantail|invlaplace|invlaplacetail|invlogistic|invlogistictail|invlogit|invnbinomial|invnbinomialtail|invnchi2|invnchi2tail|invnF|invnFtail|invnibeta|invnormal|invnt|invnttail|invpoisson|invpoissontail|invsym|invt|invttail|invtukeyprob|invweibull|invweibullph|invweibullphtail|invweibulltail|irecode|issymmetric|itrim|J|laplace|laplaceden|laplacetail|length|ln|lncauchyden|lnfactorial|lngamma|lnigammaden|lnigaussianden|lniwishartden|lnlaplaceden|lnmvnormalden|lnnormal|lnnormalden|lnwishartden|log|log10|logistic|logisticden|logistictail|logit|lower|ltrim|matmissing|matrix|matuniform|max|maxbyte|maxdouble|maxfloat|maxint|maxlong|mdy|mdyhms|min??|minbyte|mindouble|minfloat|minint|minlong|minutes|missing|mmC??|mod|mofd|month|monthly|mreldif|msofhours|msofminutes|msofseconds|nbetaden|nbinomialp??|nbinomialtail|nchi2|nchi2den|nchi2tail|nF|nFden|nFtail|nibeta|normal|normalden|npnchi2|npnF|npnt|nt|ntden|nttail|nullmat|plural|poissonp??|poissontail|proper|qofd|quarter|quarterly|r|rbeta|rbinomial|rcauchy|rchi2|real|recode|regexs|reldif|replay|return|reverse|rexponential|rgamma|rhypergeometric|rigaussian|rlaplace|rlogistic|rnbinomial|rnormal|round|roweqnumb|rownfreeparms|rownumb|rowsof|rpoisson|rt|rtrim|runiform|runiformint|rweibull|rweibullph|s|scalar|seconds|sign|sinh??|smallestdouble|soundex|sqrt|ssC??|string|stritrim|strlen|strlower|strltrim|strmatch|strofreal|strpos|strproper|strreverse|strrpos|strrtrim|strtoname|strtrim|strupper|subinstr|subinword|substr|sum|sweep|t|tanh??|tc|tC|td|tden|th|tin|tm|tobytes|tq|trace|trigamma|trim|trunc|ttail|tukeyprob|tw|twithin|uchar|udstrlen|udsubstr|uisdigit|uisletter|upper|ustrcompare|ustrcompareex|ustrfix|ustrfrom|ustrinvalidcnt|ustrleft|ustrlen|ustrlower|ustrltrim|ustrnormalize|ustrpos|ustrregexs|ustrreverse|ustrright|ustrrpos|ustrrtrim|ustrsortkey|ustrsortkeyex|ustrtitle|ustrto|ustrtohex|ustrtoname|ustrtrim|ustrunescape|ustrupper|ustrword|ustrwordcount|usubinstr|usubstr|vec|vecdiag|week|weekly|weibull|weibullden|weibullph|weibullphden|weibullphtail|weibulltail|wofd|word|wordbreaklocale|wordcount|year|yearly|yh|ym|yofd|yq|yw)|([\w&&[^0-9]]\w{0,31}))(\()
-```
-
-- Adapter translation:
-
-```text
-\b((abbrev|abs|acosh??|asinh??|atan2??|atanh|autocode|betaden|binomialp??|binomialtail|binormalbofd|byteorder|c|cauchy|cauchyden|cauchytail|Cdhms|ceil|char|chi2|chi2den|chi2tail|Chms|cholesky|chop|clip|clock|Clock|cloglog|Cmdyhms|cofC|Cofc|cofd|Cofd|coleqnumb|collatorlocale|collatorversion|colnfreeparms|colnumb|colsof|comb|cond|corr|cosh??|daily|date|day|det|dgammapda|dgammapdada|dgammapdadx|dgammapdx|dgammapdxdx|dhms|diag|diag0cnt|digamma|dofb|dofc|dofC|dofh|dofm|dofq|dofw|dofy|dow|doy|dunnettprob|el??|epsdouble|epsfloat|exp|exponential|exponentialden|exponentialtail|F|Fden|fileexists|fileread|filereaderror|filewrite|float|floor|fmtwidth|Ftail|gammaden|gammap|gammaptail|get|hadamard|halfyear|halfyearly|hhC??|hms|hofd|hours|hypergeometricp??|I|ibeta|ibetatail|igaussian|igaussianden|igaussiantail|indexnot|inlist|inrange|int|inv|invbinomial|invbinomialtail|invcauchy|invcauchytail|invchi2|invchi2tail|invcloglog|invdunnettprob|invexponential|invexponentialtail|invF|invFtail|invgammap|invgammaptail|invibeta|invibetatail|invigaussian|invigaussiantail|invlaplace|invlaplacetail|invlogistic|invlogistictail|invlogit|invnbinomial|invnbinomialtail|invnchi2|invnchi2tail|invnF|invnFtail|invnibeta|invnormal|invnt|invnttail|invpoisson|invpoissontail|invsym|invt|invttail|invtukeyprob|invweibull|invweibullph|invweibullphtail|invweibulltail|irecode|issymmetric|itrim|J|laplace|laplaceden|laplacetail|length|ln|lncauchyden|lnfactorial|lngamma|lnigammaden|lnigaussianden|lniwishartden|lnlaplaceden|lnmvnormalden|lnnormal|lnnormalden|lnwishartden|log|log10|logistic|logisticden|logistictail|logit|lower|ltrim|matmissing|matrix|matuniform|max|maxbyte|maxdouble|maxfloat|maxint|maxlong|mdy|mdyhms|min??|minbyte|mindouble|minfloat|minint|minlong|minutes|missing|mmC??|mod|mofd|month|monthly|mreldif|msofhours|msofminutes|msofseconds|nbetaden|nbinomialp??|nbinomialtail|nchi2|nchi2den|nchi2tail|nF|nFden|nFtail|nibeta|normal|normalden|npnchi2|npnF|npnt|nt|ntden|nttail|nullmat|plural|poissonp??|poissontail|proper|qofd|quarter|quarterly|r|rbeta|rbinomial|rcauchy|rchi2|real|recode|regexs|reldif|replay|return|reverse|rexponential|rgamma|rhypergeometric|rigaussian|rlaplace|rlogistic|rnbinomial|rnormal|round|roweqnumb|rownfreeparms|rownumb|rowsof|rpoisson|rt|rtrim|runiform|runiformint|rweibull|rweibullph|s|scalar|seconds|sign|sinh??|smallestdouble|soundex|sqrt|ssC??|string|stritrim|strlen|strlower|strltrim|strmatch|strofreal|strpos|strproper|strreverse|strrpos|strrtrim|strtoname|strtrim|strupper|subinstr|subinword|substr|sum|sweep|t|tanh??|tc|tC|td|tden|th|tin|tm|tobytes|tq|trace|trigamma|trim|trunc|ttail|tukeyprob|tw|twithin|uchar|udstrlen|udsubstr|uisdigit|uisletter|upper|ustrcompare|ustrcompareex|ustrfix|ustrfrom|ustrinvalidcnt|ustrleft|ustrlen|ustrlower|ustrltrim|ustrnormalize|ustrpos|ustrregexs|ustrreverse|ustrright|ustrrpos|ustrrtrim|ustrsortkey|ustrsortkeyex|ustrtitle|ustrto|ustrtohex|ustrtoname|ustrtrim|ustrunescape|ustrupper|ustrword|ustrwordcount|usubinstr|usubstr|vec|vecdiag|week|weekly|weibull|weibullden|weibullph|weibullphden|weibullphtail|weibulltail|wofd|word|wordbreaklocale|wordcount|year|yearly|yh|ym|yofd|yq|yw)|(
-```
-
-### 226. `stata.json` — `$.repository["functions"].patterns[0].patterns[0].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 227. `stata.json` — `$.repository["functions"].patterns[0].patterns[1].patterns[14].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 228. `stata.json` — `$.repository["macro-commands"].patterns[1].patterns[1].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9_]]\w{0,31}
-```
-
-### 229. `stata.json` — `$.repository["macro-global"].patterns[1].patterns[2].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9_]]\w{0,31}|_\w{1,31}
-```
-
-### 230. `stata.json` — `$.repository["macro-global-escaped"].patterns[0].patterns[2].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9_]]\w{0,31}|_\w{1,31}
-```
-
-### 231. `stata.json` — `$.repository["operators"].patterns[1].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[.\w]&&[^0-9]])/(?![[.\w]&&[^0-9]]|$)
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 232. `stata.json` — `$.repository["operators"].patterns[2].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-(?<![[.\w]&&[^0-9]])\\(?![[.\w]&&[^0-9]]|$)
-```
-
-- Adapter translation:
-
-```text
-(?<!
-```
-
-### 233. `stata.json` — `$.repository["unicode-regex-functions"].patterns[0].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 234. `stata.json` — `$.repository["unicode-regex-functions"].patterns[1].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 235. `stata.json` — `$.repository["unicode-regex-functions"].patterns[2].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 236. `stata.json` — `$.repository["unicode-regex-functions"].patterns[2].captures["9"].patterns[6].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 237. `stata.json` — `$.repository["unicode-regex-functions"].patterns[3].captures["3"].patterns[5].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 238. `stata.json` — `$.repository["unicode-regex-functions"].patterns[3].captures["8"].patterns[6].match`
-
-- Scope: `source.stata`
-- Field: `match`
-- Kind: `unsupported_syntax`
-- Reason: oniguruma character-class intersection is not supported
-- Original pattern:
-
-```text
-[\w&&[^0-9]]\w{0,31}
-```
-
-### 239. `stata.json` — `$.repository["unicode-regex-internals"].patterns[1].match`
+### 154. `stata.json` — `$.repository["unicode-regex-internals"].patterns[1].match`
 
 - Scope: `source.stata`
 - Field: `match`
@@ -4210,7 +2800,7 @@ None.
 \$(?!
 ```
 
-### 240. `swift.json` — `$.repository["literals-regular-expression-literal"].patterns[1].match`
+### 155. `swift.json` — `$.repository["literals-regular-expression-literal"].patterns[1].match`
 
 - Scope: `source.swift`
 - Field: `match`
@@ -4228,7 +2818,7 @@ None.
 (/)(?!\s)(?!/)(?:\\\s(?=/)|(?>(?<guts>(?>(?:\\Q(?>(?:(?!\\E)(?!/).)*)(?:\\E|(?=/))|\\.|\(\?#[^)]*\)|\(\?(?>\{(?:[^{].*?|\{[^{].*?}|\{\{[^{].*?}}|\{\{\{[^{].*?}}}|\{\{\{\{[^{].*?}}}}|\{\{\{\{\{.+?}}}}})})(?:\[(?!\d)\w+])?[<>X]?\)|\[(?:\\.|[^]\[\\]|\[(?:\\.|[^]\[\\]|\[(?:\\.|[^]\[\\]|\[(?:\\.|[^]\[\\])+])+])+])+]|\((?>(?!)?)\)|(?:(?!/)[^()\[\\])+)+))?)(?<!\s))(/)
 ```
 
-### 241. `swift.json` — `$.repository["literals-regular-expression-literal"].patterns[2].match`
+### 156. `swift.json` — `$.repository["literals-regular-expression-literal"].patterns[2].match`
 
 - Scope: `source.swift`
 - Field: `match`
@@ -4246,7 +2836,7 @@ None.
 ((#+)/)(?>(?<guts>(?>(?:\\Q(?>(?:(?!\\E)(?!/\2).)*)(?:\\E|(?=/\2))|\\.|\(\?#[^)]*\)|\(\?(?>\{(?:[^{].*?|\{[^{].*?}|\{\{[^{].*?}}|\{\{\{[^{].*?}}}|\{\{\{\{[^{].*?}}}}|\{\{\{\{\{.+?}}}}})})(?:\[(?!\d)\w+])?[<>X]?\)|\[(?:\\.|[^]\[\\]|\[(?:\\.|[^]\[\\]|\[(?:\\.|[^]\[\\]|\[(?:\\.|[^]\[\\])+])+])+])+]|\((?>(?!)?)\)|(?:(?!/\2)[^()\[\\])+)+))?)(/\2)|#+/.+(\n)
 ```
 
-### 242. `swift.json` — `$.repository["literals-regular-expression-literal-callout"].match`
+### 157. `swift.json` — `$.repository["literals-regular-expression-literal-callout"].match`
 
 - Scope: `source.swift`
 - Field: `match`
@@ -4264,7 +2854,7 @@ None.
 (\()(?<keyw>\?C)(?:(?<num>\d+)|`(?<name>(?:[^`]|``)*)`|'(?<name>(?:[^']|'')*)'|"(?<name>(?:[^"]|"")*)"|\^(?<name>(?:[^^]|\^\^)*)\^|%(?<name>(?:[^%]|%%)*)%|#(?<name>(?:[^#]|##)*)#|\$(?<name>(?:[^$]|\$\$)*)\$|\{(?<name>(?:[^}]|}})*)})?(\))|(\()(?<keyw>\*)(?<name>(?!\d)\w+)(?:\[(?<tag>(?!\d)\w+)])?(?:\{[^,}]+(?:,[^,}]+)*})?(\))|(\()(?<keyw>\?)(?>(\{(?:(?!)|(?!\{).*?)}))(?:\[(?<tag>(?!\d)\w+)])?(?<keyw>[<>X]?)(\))
 ```
 
-### 243. `swift.json` — `$.repository["literals-regular-expression-literal-group-or-conditional"].patterns[1].begin`
+### 158. `swift.json` — `$.repository["literals-regular-expression-literal-group-or-conditional"].patterns[1].begin`
 
 - Scope: `source.swift`
 - Field: `begin`
@@ -4282,7 +2872,7 @@ None.
 (\()(?<cond>\?\()(?:(?<NumberRef>(?<num>[-+]?\d+)(?:(?<op>[-+])(?<num>\d+))?)|(?<cond>R)(?:(?<num>[-+]?\d+)(?:(?<op>[-+])(?<num>\d+))?)?|(?<cond>R&)(?<NamedRef>(?<name>(?!\d)\w+)(?:(?<op>[-+])(?<num>\d+))?)|(?<cond><)(?:(?:(?<name>(?!\d)\w+)(?:(?<op>[-+])(?<num>\d+))?)|(?:(?<num>[-+]?\d+)(?:(?<op>[-+])(?<num>\d+))?))(?<cond>>)|(?<cond>')(?:(?:(?<name>(?!\d)\w+)(?:(?<op>[-+])(?<num>\d+))?)|(?:(?<num>[-+]?\d+)(?:(?<op>[-+])(?<num>\d+))?))(?<cond>')|(?<cond>DEFINE)|(?<cond>VERSION)(?<compar>>?=)(?<num>\d+\.\d+))(?<cond>\))|(\()(?<cond>\?)(?=\()
 ```
 
-### 244. `wolfram.json` — `$.repository["simple-toplevel-definitions"].patterns[1].match`
+### 159. `wolfram.json` — `$.repository["simple-toplevel-definitions"].patterns[1].match`
 
 - Scope: `source.wolfram`
 - Field: `match`
@@ -4307,7 +2897,7 @@ None.
 - Scope: `source.cs`
 - Field: `begin`
 - Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized grouping construct: (?~ in `\G(?=(?~\*/)$)`
+- Reason: error parsing regexp: unrecognized grouping construct: (?~ in `(?!)(?=(?~\*/)$)`
 - Original pattern:
 
 ```text
@@ -4332,235 +2922,7 @@ None.
 (?:(?<![\s\S])|^(?=[\s\S]))((?>\s*))(\*(?!/))?(?=(?~\*/)$)
 ```
 
-### 3. `hy.json` — `$.repository["strings"].begin`
-
-- Scope: `source.hy`
-- Field: `begin`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `(f?&#34;|}(?=\N*?[&#34;{]))`
-- Original pattern:
-
-```text
-(f?"|}(?=\N*?["{]))
-```
-
-### 4. `hy.json` — `$.repository["strings"].end`
-
-- Scope: `source.hy`
-- Field: `end`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `(&#34;|(?&lt;=[&#34;}]\N*?)\{)`
-- Original pattern:
-
-```text
-("|(?<=["}]\N*?)\{)
-```
-
-### 5. `less.json` — `$.repository["at-container"].patterns[0].patterns[0].patterns[3].match`
-
-- Scope: `source.css.less`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*`
-- Original pattern:
-
-```text
---|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|\H|\h{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|\H|\h{1,6}[R\s]))*
-```
-
-- Adapter translation:
-
-```text
---|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*
-```
-
-### 6. `less.json` — `$.repository["media-query"].patterns[2].patterns[0].begin`
-
-- Scope: `source.css.less`
-- Field: `begin`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `(--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*)\s*(?=[):])`
-- Original pattern:
-
-```text
-(--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|\H|\h{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|\H|\h{1,6}[R\s]))*)\s*(?=[):])
-```
-
-- Adapter translation:
-
-```text
-(--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*)\s*(?=[):])
-```
-
-### 7. `less.json` — `$.repository["pseudo-selectors"].patterns[6].patterns[0].patterns[0].match`
-
-- Scope: `source.css.less`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*`
-- Original pattern:
-
-```text
---|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|\H|\h{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|\H|\h{1,6}[R\s]))*
-```
-
-- Adapter translation:
-
-```text
---|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*
-```
-
-### 8. `less.json` — `$.repository["pseudo-selectors"].patterns[9].match`
-
-- Scope: `source.css.less`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `(::?)(-\w+-)(--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*)\b`
-- Original pattern:
-
-```text
-(::?)(-\w+-)(--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|\H|\h{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|\H|\h{1,6}[R\s]))*)\b
-```
-
-- Adapter translation:
-
-```text
-(::?)(-\w+-)(--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*)\b
-```
-
-### 9. `less.json` — `$.repository["rule-list-body"].patterns[5].patterns[12].patterns[0].patterns[3].match`
-
-- Scope: `source.css.less`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `--|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*`
-- Original pattern:
-
-```text
---|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|\H|\h{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|\H|\h{1,6}[R\s]))*
-```
-
-- Adapter translation:
-
-```text
---|-?(?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*
-```
-
-### 10. `less.json` — `$.repository["rule-list-body"].patterns[5].patterns[1].begin`
-
-- Scope: `source.css.less`
-- Field: `begin`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `(-[-\w]+?-)((?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*)\b`
-- Original pattern:
-
-```text
-(-[-\w]+?-)((?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|\H|\h{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|\H|\h{1,6}[R\s]))*)\b
-```
-
-- Adapter translation:
-
-```text
-(-[-\w]+?-)((?:[A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))(?:[-A-Z_a-z·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�𐀀-\x{EFFFF}\d]|\\(?:\N|[^0-9A-Fa-f]|[0-9A-Fa-f]{1,6}[R\s]))*)\b
-```
-
-### 11. `mojo.json` — `$.repository["double-one-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.mojo`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 12. `mojo.json` — `$.repository["double-three-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.mojo`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 13. `mojo.json` — `$.repository["single-one-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.mojo`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 14. `mojo.json` — `$.repository["single-three-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.mojo`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 15. `python.json` — `$.repository["double-one-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.python`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 16. `python.json` — `$.repository["double-three-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.python`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 17. `python.json` — `$.repository["single-one-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.python`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 18. `python.json` — `$.repository["single-three-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.python`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 19. `razor.json` — `$.repository["catch-condition"].patterns[0].match`
+### 3. `razor.json` — `$.repository["catch-condition"].patterns[0].match`
 
 - Scope: `text.aspnetcorerazor`
 - Field: `match`
@@ -4578,7 +2940,7 @@ None.
 (?<type-name>(?:(?:(?<identifier>@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*::\s*)?(?<name-and-type-args>(?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*(?<type-args>\s*<(?:[^<>]|(?!))+>\s*)?)(?:\s*\.\s*(?!))*|(?<tuple>\s*\((?:[^()]|(?!))+\)))(?:\s*\?\s*)?(?:\s*\[(?:\s*,\s*)*]\s*)*)\s*(?:((?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*))\b)?
 ```
 
-### 20. `razor.json` — `$.repository["foreach-condition"].patterns[0].match`
+### 4. `razor.json` — `$.repository["foreach-condition"].patterns[0].match`
 
 - Scope: `text.aspnetcorerazor`
 - Field: `match`
@@ -4594,144 +2956,6 @@ None.
 
 ```text
 (?:\b(var)\b|(?<type-name>(?:(?:(?<identifier>@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*::\s*)?(?<name-and-type-args>(?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*)\s*(?<type-args>\s*<(?:[^<>]|(?!))+>\s*)?)(?:\s*\.\s*(?!))*|(?<tuple>\s*\((?:[^()]|(?!))+\)))(?:\s*\?\s*)?(?:\s*\[(?:\s*,\s*)*]\s*)*))\s+((?:@?[_\p{L}\p{Nl}\p{Other_Alphabetic}][_\p{L}\p{Nl}\p{Other_Alphabetic}\p{Nd}]*))\s+\b(in)\b
-```
-
-### 21. `regexp.json` — `$.repository["regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.regexp.python`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 22. `shellsession.json` — `$.patterns[0].match`
-
-- Scope: `text.shell-session`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `(?:(?&lt;![\s\S])|^(?=[\s\S]))(?:((?:\(\S+\)\s*)?(?:sh\S*?|\w+\S+[:@]\S+(?:\s+\S+)?|\[\S+?[:@]\N+?].*?))\s*)?([#$%&gt;❯➜\p{Greek}])\s+(.*)$`
-- Original pattern:
-
-```text
-^(?:((?:\(\S+\)\s*)?(?:sh\S*?|\w+\S+[:@]\S+(?:\s+\S+)?|\[\S+?[:@]\N+?].*?))\s*)?([#$%>❯➜\p{Greek}])\s+(.*)$
-```
-
-- Adapter translation:
-
-```text
-(?:(?<![\s\S])|^(?=[\s\S]))(?:((?:\(\S+\)\s*)?(?:sh\S*?|\w+\S+[:@]\S+(?:\s+\S+)?|\[\S+?[:@]\N+?].*?))\s*)?([#$%>❯➜\p{Greek}])\s+(.*)$
-```
-
-### 23. `smithy.json` — `$.patterns[12].patterns[3].match`
-
-- Scope: `source.smithy`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 24. `smithy.json` — `$.patterns[1].patterns[1].match`
-
-- Scope: `source.smithy`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 25. `smithy.json` — `$.patterns[3].patterns[2].match`
-
-- Scope: `source.smithy`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 26. `smithy.json` — `$.patterns[4].patterns[2].match`
-
-- Scope: `source.smithy`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 27. `stylus.json` — `$.repository["property_value"].patterns[1].match`
-
-- Scope: `source.stylus`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N+?`
-- Original pattern:
-
-```text
-\N+?
-```
-
-### 28. `vyper.json` — `$.repository["double-one-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.vyper`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 29. `vyper.json` — `$.repository["double-three-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.vyper`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 30. `vyper.json` — `$.repository["single-one-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.vyper`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
-```
-
-### 31. `vyper.json` — `$.repository["single-three-regexp-character-set"].patterns[1].patterns[1].match`
-
-- Scope: `source.vyper`
-- Field: `match`
-- Kind: `compile_error`
-- Reason: error parsing regexp: unrecognized escape sequence \N in `\N`
-- Original pattern:
-
-```text
-\N
 ```
 
 ## Other regex diagnostics
