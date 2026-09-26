@@ -58,9 +58,10 @@ corpus.
 ## Verification and conformance
 
 The GitHub Actions workflow pins Go, Node, vscode-textmate,
-vscode-oniguruma, and the grammar corpus. Every push and pull request runs the
-routine gates below; the slower Go theme-golden suite is a required local or
-release gate and is also available through manual workflow dispatch.
+vscode-oniguruma, and the grammar corpus. Every pull request, `main` push,
+version tag, and manual dispatch runs the complete merge gate below, including
+the 72-file Go theme-golden suite. A green CI check therefore covers every
+required test rather than deferring part of the suite to a manual release step.
 
 | Gate | Coverage |
 | --- | --- |
@@ -68,15 +69,29 @@ release gate and is also available through manual workflow dispatch.
 | Static checks | `gofmt`, `go vet`, golangci-lint, TypeScript type-checking, and generated-file cleanliness |
 | Native robustness | A bounded 10-second `FuzzTokenizeLine` run on every routine CI execution |
 | Upstream tokenization | 101 tests against the real vscode-textmate backend and the same 101 tests against Go: 95 upstream fixtures, two client tests, and four harness tests |
-| Themes | All 127 upstream theme tests against the reference adapter, a 72-file Go-vs-reference scope differential, and 72 isolated Go golden fixtures across 14 themes in the manual/release gate |
+| Themes | All 127 upstream theme tests against the reference adapter, a 72-file Go-vs-reference scope differential, and 72 isolated Go golden fixtures across 14 themes |
 | Differential tokenization | Exact token-text and full-scope-stack parity with vscode-textmate on an 82-file corpus, plus 48 deterministic edit/splice/UTF-8 fuzz cases; an extended 500-case gate has also passed |
 | Grammar corpus | Standalone tokenization of 166 files covering every embedded root, plus parsing and registry-loading all 260 pinned source grammars and scanning their 34,698 regex fields |
 
 See [`conformance/README.md`](conformance/README.md) for the harness commands,
-oracle behavior, fixture counts, and reproducibility details. The generated
-[`docs/grammar-report.md`](docs/grammar-report.md) records every known regex
-translation diagnostic rather than silently treating unsupported Oniguruma
-syntax as compatible.
+oracle behavior, fixture counts, and reproducibility details. The checked
+[`grammar-report` golden file](cmd/grammar-report/testdata/report.golden.md)
+records every known regex translation diagnostic rather than silently treating
+unsupported Oniguruma syntax as compatible.
+
+After an intentional regex translator or pinned-grammar change, review the
+compatibility difference and refresh that golden file from the repository root:
+
+```sh
+TM_GRAMMARS_DIR=../tm-grammars/packages/tm-grammars \
+  go test -count=1 ./cmd/grammar-report \
+  -run '^TestGrammarReportGolden$' -update
+```
+
+The test verifies the pinned checkout revision and cleanliness before writing.
+CI sets `TEXTMATE_GO_REQUIRE_GRAMMAR_REPORT=1`, so a missing checkout or stale
+golden file fails the merge gate; ordinary `go test ./...` runs skip this
+external-corpus test.
 
 ## Embedded grammars
 

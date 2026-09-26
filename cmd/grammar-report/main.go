@@ -50,7 +50,6 @@ type regexDiagnostic struct {
 
 type report struct {
 	revision         string
-	grammarDir       string
 	files            int
 	parsed           int
 	loaded           int
@@ -99,9 +98,8 @@ func scan(opts options) (*report, error) {
 	}
 
 	result := &report{
-		revision:   opts.revision,
-		grammarDir: filepath.ToSlash(filepath.Clean(opts.grammarDir)),
-		files:      len(paths),
+		revision: opts.revision,
+		files:    len(paths),
 	}
 	files := make([]grammarFile, 0, len(paths))
 	byScope := make(map[string]*textmate.RawGrammar, len(paths))
@@ -313,11 +311,10 @@ func writeReport(w io.Writer, result *report) error {
 	write("# Grammar compatibility report\n\n")
 	write("This report scans the pinned `textmate-grammars-themes` grammar corpus at revision `%s`. ", result.revision)
 	write("It parses and registry-loads every grammar, then sends every regex field reachable through the parsed grammar model through the same `oniguruma.NewScanner` translation and compilation path used by the tokenizer.\n\n")
-	write("Reproduce from the `textmate-go` repository root:\n\n")
+	write("This file is the golden output for `TestGrammarReportGolden`. Update it from the `textmate-go` repository root after an intentional translator or grammar change:\n\n")
 	write("```sh\n")
-	write("report_file=$(mktemp)\n")
-	write("go run ./cmd/grammar-report -grammars %s -revision %s > \"$report_file\"\n", shellQuote(result.grammarDir), shellQuote(result.revision))
-	write("mv \"$report_file\" docs/grammar-report.md\n")
+	write("TM_GRAMMARS_DIR=../tm-grammars/packages/tm-grammars \\\n")
+	write("  go test -count=1 ./cmd/grammar-report -run '^TestGrammarReportGolden$' -update\n")
 	write("```\n\n")
 	write("Numeric capture references in `end` and `while` fields are replaced with a safe literal before compilation. At runtime those references are replaced with escaped text captured by the corresponding `begin`; compiling them as standalone backreferences would report false failures. The report always shows the original grammar pattern.\n\n")
 
@@ -426,14 +423,4 @@ func writeCodeBlock(w *reportWriter, value string) {
 
 func markdownCode(value string) string {
 	return strings.ReplaceAll(value, "`", "&#96;")
-}
-
-func shellQuote(value string) string {
-	if value != "" && strings.IndexFunc(value, func(r rune) bool {
-		safe := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_@%+=:,./-", r)
-		return !safe
-	}) == -1 {
-		return value
-	}
-	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }

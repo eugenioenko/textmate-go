@@ -2,12 +2,11 @@
 
 This report scans the pinned `textmate-grammars-themes` grammar corpus at revision `37edd1b26f18838050661d912334aba0ca7f4931`. It parses and registry-loads every grammar, then sends every regex field reachable through the parsed grammar model through the same `oniguruma.NewScanner` translation and compilation path used by the tokenizer.
 
-Reproduce from the `textmate-go` repository root:
+This file is the golden output for `TestGrammarReportGolden`. Update it from the `textmate-go` repository root after an intentional translator or grammar change:
 
 ```sh
-report_file=$(mktemp)
-go run ./cmd/grammar-report -grammars ../tm-grammars/packages/tm-grammars/grammars -revision 37edd1b26f18838050661d912334aba0ca7f4931 > "$report_file"
-mv "$report_file" docs/grammar-report.md
+TM_GRAMMARS_DIR=../tm-grammars/packages/tm-grammars \
+  go test -count=1 ./cmd/grammar-report -run '^TestGrammarReportGolden$' -update
 ```
 
 Numeric capture references in `end` and `while` fields are replaced with a safe literal before compilation. At runtime those references are replaced with escaped text captured by the corresponding `begin`; compiling them as standalone backreferences would report false failures. The report always shows the original grammar pattern.

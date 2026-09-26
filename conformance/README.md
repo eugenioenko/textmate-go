@@ -69,16 +69,16 @@ under the checkout's 14 themes. `src/themeScopeDiff.test.ts` is an
 opt-in, non-mutating source/scope differential exposed as
 `pnpm test:go:theme-scopes`; any difference fails the command.
 
-The routine GitHub Actions gate runs typechecking, reference and Go
-tokenization, all 127 upstream theme tests through the isolated reference
-adapter, the 72-file scope differential, the real-file corpus, and the bounded
-48-case fuzzer. Of the 127 theme tests, the Go gate runs the 72 golden-file
-cases. The other 53 test vscode-textmate's deliberately unported Theme
-parser/matcher, and two are unbounded tokenization-time smoke tests; their
-reference-adapter path remains enforced by `pnpm test:reference:themes`. The
-isolated 72-file Go golden suite takes roughly 82 seconds, so it remains a
-required local/release gate and is available from manual workflow dispatch via
-the `run_theme_goldens` input instead of running on every push and pull request.
+The GitHub Actions merge gate runs typechecking, reference and Go tokenization,
+all 127 upstream theme tests through the isolated reference adapter, the
+72-file scope differential, the real-file corpus, the bounded 48-case fuzzer,
+and all 72 isolated Go golden-file cases. Of the 127 reference theme tests, 53
+exercise vscode-textmate's deliberately unported Theme parser/matcher and two
+are unbounded tokenization-time smoke tests; their reference-adapter path
+remains enforced by `pnpm test:reference:themes`. The Go golden suite takes
+roughly 82 seconds and runs on every pull request, `main` push, version tag, and
+manual workflow dispatch so a green CI result covers the complete required
+suite.
 
 The differential commands use the real vscode-textmate/vscode-oniguruma engine
 as an oracle and the pinned sibling `tm-grammars` checkout as the grammar
