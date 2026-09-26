@@ -95,6 +95,7 @@ const (
 	DiagnosticUnsupportedSyntax DiagnosticKind = "unsupported_syntax"
 	DiagnosticMatchTimeout      DiagnosticKind = "match_timeout"
 	DiagnosticMatchError        DiagnosticKind = "match_error"
+	DiagnosticPanic             DiagnosticKind = "regex_panic"
 )
 
 // Diagnostic describes a pattern that could not safely participate in a scan.
@@ -116,6 +117,22 @@ type partialTranslationError struct {
 }
 
 func (e *partialTranslationError) Error() string { return e.message }
+
+type regexpPanicError struct {
+	operation string
+	value     any
+}
+
+func (e regexpPanicError) Error() string {
+	return fmt.Sprintf("regexp2 panicked while %s: %v", e.operation, e.value)
+}
+
+// compileHook and matchHook let package tests inject panics at the regexp2
+// boundaries. They are nil in production.
+var (
+	compileHook func(string)
+	matchHook   func(*regexp2.Regexp)
+)
 
 // ScannerOption configures an OnigScanner.
 type ScannerOption func(*scannerConfig)
@@ -153,6 +170,7 @@ type OnigScanner struct {
 	mu       sync.Mutex
 	searches [][variantCount]cachedSearch
 	scratch  []regexp2.CaptureIndex
+	disabled []bool
 
 	diagnosticsMu sync.Mutex
 	diagnostics   []Diagnostic
@@ -261,6 +279,7 @@ func NewScanner(sources []string, options ...ScannerOption) *OnigScanner {
 	scanner := &OnigScanner{
 		patterns:      make([]*compiledPattern, len(sources)),
 		searches:      make([][variantCount]cachedSearch, len(sources)),
+		disabled:      make([]bool, len(sources)),
 		diagnosticSet: make(map[diagnosticKey]struct{}),
 		diagnosticFn:  config.diagnosticHandler,
 	}
@@ -301,12 +320,24 @@ func newCompiledPattern(source string, timeout time.Duration) *compiledPattern {
 	pattern.hasA = containsAnchor(translated, 'A')
 	pattern.hasG = containsAnchor(translated, 'G')
 	pattern.hasZ = containsAnchor(translated, 'z') || containsAnchor(translated, 'Z')
-	if err := pattern.compileVariants(); err != nil {
+	compileErr := func() (err error) {
+		defer func() {
+			if value := recover(); value != nil {
+				err = regexpPanicError{operation: "compiling", value: value}
+			}
+		}()
+		return pattern.compileVariants()
+	}()
+	if compileErr != nil {
 		pattern.broken = true
 		pattern.variants = [variantCount]*regexp2.Regexp{}
+		kind := DiagnosticCompileError
+		if _, panicked := compileErr.(regexpPanicError); panicked {
+			kind = DiagnosticPanic
+		}
 		pattern.compileDiagnostics = append(pattern.compileDiagnostics, Diagnostic{
-			Kind: DiagnosticCompileError, Pattern: source,
-			Translated: translated, Message: err.Error(),
+			Kind: kind, Pattern: source,
+			Translated: translated, Message: compileErr.Error(),
 		})
 	}
 	return pattern
@@ -361,11 +392,17 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 	allowZ := opts&FindOptionNotEndString == 0
 
 	s.mu.Lock()
+	locked := true
+	defer func() {
+		if locked {
+			s.mu.Unlock()
+		}
+	}()
 	var diagnostics []Diagnostic
 	bestIndex := -1
 	var bestCaptures []Capture
 	for index, pattern := range s.patterns {
-		if pattern.broken {
+		if pattern.broken || s.disabled[index] {
 			continue
 		}
 		variant := pattern.variantKey(allowA, allowG, allowZ)
@@ -405,7 +442,11 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 		if err != nil {
 			kind := DiagnosticMatchError
 			message := "regexp evaluation failed"
-			if strings.Contains(strings.ToLower(err.Error()), "timeout") {
+			if panicErr, panicked := err.(regexpPanicError); panicked {
+				s.disabled[index] = true
+				kind = DiagnosticPanic
+				message = panicErr.Error()
+			} else if strings.Contains(strings.ToLower(err.Error()), "timeout") {
 				kind = DiagnosticMatchTimeout
 				message = fmt.Sprintf("match exceeded the configured %s per-pattern timeout", pattern.timeout)
 			}
@@ -426,6 +467,7 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 		}
 	}
 	s.mu.Unlock()
+	locked = false
 	for _, diagnostic := range diagnostics {
 		s.addDiagnostic(diagnostic)
 	}
@@ -488,6 +530,9 @@ func (p *compiledPattern) compileVariants() error {
 		if p.hasZ && !allowZ {
 			source = neutralizeAnchors(source, "zZ")
 		}
+		if compileHook != nil {
+			compileHook(source)
+		}
 		regex, err := regexp2.Compile(source, regexp2.Multiline, regexp2.OptionMaintainCaptureOrder())
 		if err != nil {
 			return err
@@ -505,9 +550,17 @@ func (p *compiledPattern) compileVariants() error {
 }
 
 // match must be called with s.mu held because it reuses s.scratch.
-func (s *OnigScanner) match(regex *regexp2.Regexp, text []rune, start, maxStartExclusive int) ([]Capture, error) {
+func (s *OnigScanner) match(regex *regexp2.Regexp, text []rune, start, maxStartExclusive int) (captures []Capture, err error) {
+	defer func() {
+		if value := recover(); value != nil {
+			captures = nil
+			err = regexpPanicError{operation: "matching", value: value}
+		}
+	}()
+	if matchHook != nil {
+		matchHook(regex)
+	}
 	var indices []regexp2.CaptureIndex
-	var err error
 	if maxStartExclusive < 0 {
 		indices, err = regex.FindRunesCaptureIndicesStartingAt(text, start, s.scratch[:0])
 	} else {
@@ -519,7 +572,7 @@ func (s *OnigScanner) match(regex *regexp2.Regexp, text []rune, start, maxStartE
 	if err != nil || len(indices) == 0 {
 		return nil, err
 	}
-	captures := make([]Capture, len(indices))
+	captures = make([]Capture, len(indices))
 	for index, capture := range indices {
 		if capture.RuneIndex < 0 {
 			captures[index] = Capture{Start: -1, End: -1}

@@ -3,6 +3,8 @@ package oniguruma
 import (
 	"testing"
 	"time"
+
+	"github.com/eugenioenko/regexp2/v2"
 )
 
 func TestFindNextMatch(t *testing.T) {
@@ -303,6 +305,92 @@ func TestDegradedPatternsProduceDiagnosticsAndNeverMatch(t *testing.T) {
 				t.Fatalf("degraded pattern interfered with valid one: %+v", match)
 			}
 		})
+	}
+}
+
+func TestCompilePanicDisablesOnlyPanickingPattern(t *testing.T) {
+	previousHook := compileHook
+	compileHook = func(source string) {
+		if source == "panic" {
+			panic("compile boom")
+		}
+	}
+	t.Cleanup(func() { compileHook = previousHook })
+
+	scanner := NewScanner([]string{`panic`, `b`})
+	diagnostics := scanner.Diagnostics()
+	if len(diagnostics) != 1 || diagnostics[0].Kind != DiagnosticPanic || diagnostics[0].PatternIndex != 0 {
+		t.Fatalf("compile panic diagnostics = %+v", diagnostics)
+	}
+	if got, want := diagnostics[0].Message, "regexp2 panicked while compiling: compile boom"; got != want {
+		t.Fatalf("compile panic message = %q, want %q", got, want)
+	}
+	if !scanner.patterns[0].broken {
+		t.Fatal("panicking compile was not marked broken")
+	}
+	for index, variant := range scanner.patterns[0].variants {
+		if variant != nil {
+			t.Fatalf("panicking pattern variant %d was not cleared", index)
+		}
+	}
+	match := scanner.FindNextMatch(NewString("b"), 0, FindOptionNone)
+	if match == nil || match.Index != 1 {
+		t.Fatalf("valid pattern did not survive compile panic: %+v", match)
+	}
+}
+
+func TestMatchPanicDisablesPatternPerScannerAndReleasesLock(t *testing.T) {
+	cache := NewPatternCache(0)
+	scanner := NewScanner([]string{`a`, `b`}, WithPatternCache(cache))
+	other := NewScanner([]string{`a`, `b`}, WithPatternCache(cache))
+	panickingRegex := scanner.patterns[0].variants[scanner.patterns[0].variantKey(true, true, true)]
+
+	previousHook := matchHook
+	attempts := 0
+	matchHook = func(regex *regexp2.Regexp) {
+		if regex == panickingRegex {
+			attempts++
+			if attempts == 1 {
+				panic("match boom")
+			}
+		}
+	}
+	t.Cleanup(func() { matchHook = previousHook })
+
+	match := scanner.FindNextMatch(NewString("ab"), 0, FindOptionNone)
+	if match == nil || match.Index != 1 {
+		t.Fatalf("later pattern did not survive match panic: %+v", match)
+	}
+	diagnostics := scanner.Diagnostics()
+	if len(diagnostics) != 1 || diagnostics[0].Kind != DiagnosticPanic || diagnostics[0].PatternIndex != 0 {
+		t.Fatalf("match panic diagnostics = %+v", diagnostics)
+	}
+	if got, want := diagnostics[0].Message, "regexp2 panicked while matching: match boom"; got != want {
+		t.Fatalf("match panic message = %q, want %q", got, want)
+	}
+
+	result := make(chan *Match, 1)
+	go func() {
+		result <- scanner.FindNextMatch(NewString("ab"), 0, FindOptionNone)
+	}()
+	select {
+	case match = <-result:
+		if match == nil || match.Index != 1 {
+			t.Fatalf("second scan = %+v, want pattern 1", match)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("second scan deadlocked after regexp2 panic")
+	}
+	if attempts != 1 {
+		t.Fatalf("disabled pattern was attempted %d times, want 1", attempts)
+	}
+	if got := len(scanner.Diagnostics()); got != 1 {
+		t.Fatalf("match panic diagnostic count = %d, want 1", got)
+	}
+
+	match = other.FindNextMatch(NewString("ab"), 0, FindOptionNone)
+	if match == nil || match.Index != 0 {
+		t.Fatalf("shared pattern was disabled in another scanner: %+v", match)
 	}
 }
 
