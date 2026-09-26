@@ -15,14 +15,20 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const count = Number(process.env.COUNT ?? 5);
 const benchTime = process.env.BENCH_TIME ?? '1s';
 const filter = new RegExp(process.env.FILTER ?? '.');
+const group = process.env.GROUP ?? 'core';
 const skipJS = process.env.SKIP_JS === '1';
 const vscodeTextmateDir = path.resolve(
   process.env.VSCODE_TEXTMATE_DIR ?? path.join(root, '../vscode-textmate'),
 );
 
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'benchmarks/corpus.json'), 'utf8'));
-const cases = manifest.cases.filter((c) => filter.test(c.name));
-if (cases.length === 0) throw new Error(`FILTER=${filter} matches no case`);
+if (!['core', 'extended', 'all'].includes(group)) {
+  throw new Error(`GROUP must be core, extended, or all; got ${group}`);
+}
+const cases = manifest.cases.filter(
+  (c) => (group === 'all' || c.group === group) && filter.test(c.name),
+);
+if (cases.length === 0) throw new Error(`GROUP=${group} FILTER=${filter} matches no case`);
 
 function repeatedLines({ fixture, lines }) {
   const seed = fs.readFileSync(path.join(root, fixture), 'utf8').replace(/\n$/, '').split('\n');

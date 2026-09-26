@@ -1,18 +1,24 @@
 {
   "cases": [
-    { "name": "TSX_2000", "filename": "component.tsx", "fixture": "conformance/corpus/web/component.tsx", "lines": 2000, "scopeName": "source.tsx" },
-    { "name": "HTML_2000", "filename": "multiline.html", "fixture": "conformance/corpus/web/multiline.html", "lines": 2000, "scopeName": "text.html.basic" },
-    { "name": "Go_2000", "filename": "main.go", "fixture": "conformance/corpus/general/main.go", "lines": 2000, "scopeName": "source.go" },
-    { "name": "Markdown_1000", "filename": "article.md", "fixture": "conformance/corpus/markup/article.md", "lines": 1000, "scopeName": "text.html.markdown" },
-    { "name": "TypeScript_2000", "filename": "client.ts", "fixture": "benchmarks/corpus/client.ts", "lines": 2000, "scopeName": "source.ts" },
-    { "name": "JavaScript_2000", "filename": "store.js", "fixture": "benchmarks/corpus/store.js", "lines": 2000, "scopeName": "source.js" },
-    { "name": "CSS_2000", "filename": "theme.css", "fixture": "benchmarks/corpus/theme.css", "lines": 2000, "scopeName": "source.css" },
-    { "name": "JSON_2000", "filename": "package.json", "fixture": "benchmarks/corpus/package.json", "lines": 2000, "scopeName": "source.json" },
-    { "name": "Python_2000", "filename": "inventory.py", "fixture": "benchmarks/corpus/inventory.py", "lines": 2000, "scopeName": "source.python" },
-    { "name": "Rust_2000", "filename": "queue.rs", "fixture": "benchmarks/corpus/queue.rs", "lines": 2000, "scopeName": "source.rust" },
-    { "name": "Java_2000", "filename": "Scheduler.java", "fixture": "benchmarks/corpus/Scheduler.java", "lines": 2000, "scopeName": "source.java" },
-    { "name": "CPP_2000", "filename": "matrix.cpp", "fixture": "benchmarks/corpus/matrix.cpp", "lines": 2000, "scopeName": "source.cpp" },
-    { "name": "Ruby_2000", "filename": "ledger.rb", "fixture": "benchmarks/corpus/ledger.rb", "lines": 2000, "scopeName": "source.ruby" },
-    { "name": "Shell_2000", "filename": "deploy.sh", "fixture": "benchmarks/corpus/deploy.sh", "lines": 2000, "scopeName": "source.shell" }
+    { "name": "TSX_2000", "group": "core", "filename": "component.tsx", "fixture": "conformance/corpus/web/component.tsx", "lines": 2000, "scopeName": "source.tsx" },
+    { "name": "HTML_2000", "group": "core", "filename": "multiline.html", "fixture": "conformance/corpus/web/multiline.html", "lines": 2000, "scopeName": "text.html.basic" },
+    { "name": "Go_2000", "group": "core", "filename": "main.go", "fixture": "conformance/corpus/general/main.go", "lines": 2000, "scopeName": "source.go" },
+    { "name": "Markdown_1000", "group": "core", "filename": "article.md", "fixture": "conformance/corpus/markup/article.md", "lines": 1000, "scopeName": "text.html.markdown" },
+    { "name": "TypeScript_2000", "group": "core", "filename": "client.ts", "fixture": "benchmarks/corpus/client.ts", "lines": 2000, "scopeName": "source.ts" },
+    { "name": "JavaScript_2000", "group": "core", "filename": "store.js", "fixture": "benchmarks/corpus/store.js", "lines": 2000, "scopeName": "source.js" },
+    { "name": "CSS_2000", "group": "core", "filename": "theme.css", "fixture": "benchmarks/corpus/theme.css", "lines": 2000, "scopeName": "source.css" },
+    { "name": "JSON_2000", "group": "core", "filename": "package.json", "fixture": "benchmarks/corpus/package.json", "lines": 2000, "scopeName": "source.json" },
+    { "name": "Python_2000", "group": "core", "filename": "inventory.py", "fixture": "benchmarks/corpus/inventory.py", "lines": 2000, "scopeName": "source.python" },
+    { "name": "Rust_2000", "group": "core", "filename": "queue.rs", "fixture": "benchmarks/corpus/queue.rs", "lines": 2000, "scopeName": "source.rust" },
+    { "name": "Java_2000", "group": "core", "filename": "Scheduler.java", "fixture": "benchmarks/corpus/Scheduler.java", "lines": 2000, "scopeName": "source.java" },
+    { "name": "CPP_2000", "group": "core", "filename": "matrix.cpp", "fixture": "benchmarks/corpus/matrix.cpp", "lines": 2000, "scopeName": "source.cpp" },
+    { "name": "Ruby_2000", "group": "core", "filename": "ledger.rb", "fixture": "benchmarks/corpus/ledger.rb", "lines": 2000, "scopeName": "source.ruby" },
+    { "name": "Shell_2000", "group": "core", "filename": "deploy.sh", "fixture": "benchmarks/corpus/deploy.sh", "lines": 2000, "scopeName": "source.shell" },
+    { "name": "CSharp_2000", "group": "extended", "filename": "service.cs", "fixture": "benchmarks/corpus/service.cs", "lines": 2000, "scopeName": "source.cs" },
+    { "name": "PHP_2000", "group": "extended", "filename": "page.php", "fixture": "benchmarks/corpus/page.php", "lines": 2000, "scopeName": "source.php" },
+    { "name": "SQL_2000", "group": "extended", "filename": "query.sql", "fixture": "benchmarks/corpus/query.sql", "lines": 2000, "scopeName": "source.sql" },
+    { "name": "YAML_2000", "group": "extended", "filename": "config.yaml", "fixture": "benchmarks/corpus/config.yaml", "lines": 2000, "scopeName": "source.yaml" },
+    { "name": "Haskell_2000", "group": "extended", "filename": "module.hs", "fixture": "benchmarks/corpus/module.hs", "lines": 2000, "scopeName": "source.haskell" },
+    { "name": "Vue_2000", "group": "extended", "filename": "component.vue", "fixture": "benchmarks/corpus/component.vue", "lines": 2000, "scopeName": "text.html.vue" }
   ]
 }

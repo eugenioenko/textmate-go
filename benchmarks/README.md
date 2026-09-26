@@ -32,18 +32,24 @@ textmate-go is faster.
 
 ```sh
 make bench-compare
+make bench-compare-extended
 ```
+
+The default command runs the 14-case `core` group. The extended command runs
+the complete 20-case corpus: core plus C#, PHP, SQL, YAML, Haskell, and Vue.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `COUNT` | `5` | Runs per engine and case; the fastest is reported. |
 | `BENCH_TIME` | `1s` | Minimum duration of each run (`500ms`, `2s`, ...). |
 | `FILTER` | all | Regular expression over case names, e.g. `FILTER='TSX\|CPP'`. |
+| `GROUP` | `core` | `core`, `extended`, or `all`; the extended Make target sets `all`. |
 | `SKIP_JS` | unset | `1` skips vscode-textmate when it is not set up. |
 | `VSCODE_TEXTMATE_DIR` | `../vscode-textmate` | vscode-textmate checkout. |
 
 ```sh
 FILTER='TSX|HTML' COUNT=3 make bench-compare
+GROUP=extended make bench-compare
 SKIP_JS=1 make bench-compare
 ```
 
@@ -61,9 +67,9 @@ WebAssembly, so the `vs JS` column is the meaningful target for the port.
 
 ## Corpus
 
-[`corpus.json`](corpus.json) lists every case: the fixture, the file name used
-to select a Chroma lexer, the TextMate scope, and how many lines the fixture is
-repeated to. The Go side and the JavaScript side both read it;
+[`corpus.json`](corpus.json) lists every case: its group, fixture, the file name
+used to select a Chroma lexer, the TextMate scope, and how many lines the fixture
+is repeated to. The Go side and the JavaScript side both read it;
 `TestCorpusManifest` in `chroma/` checks that each scope matches textmate-go's
 filename table and that Chroma has a lexer for it.
 
@@ -73,6 +79,24 @@ The other languages use the realistic fixtures in [`corpus/`](corpus/).
 
 To add a language, drop a fixture in `corpus/`, add an entry to `corpus.json`,
 and run `go test ./...` in `chroma/`.
+
+## Pull-request comparison
+
+On pull requests, CI checks out the exact base and head commits and benchmarks
+all 20 cases with the lightweight harness in [`textmate/`](textmate/). It runs
+only textmate-go, alternating base and head on the same runner; Chroma,
+vscode-textmate, Node tokenization, and Oniguruma are not part of this job.
+
+The workflow writes the full table to the job summary and to one persistent PR
+comment. Later pushes update that comment instead of adding another. Benchmark
+or corpus errors fail the job, but timing changes are informational because
+shared-runner timing is noisy. GitHub gives fork-originated PRs a read-only
+token, so those runs keep the report in the job summary without attempting a
+comment. To reproduce the comparison locally:
+
+```sh
+BASE_DIR=/path/to/base-checkout node benchmarks/compare-go-refs.mjs
+```
 
 ## Noise
 

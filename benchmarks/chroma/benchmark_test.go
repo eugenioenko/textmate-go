@@ -16,6 +16,7 @@ import (
 
 type corpusCase struct {
 	Name      string `json:"name"`
+	Group     string `json:"group"`
 	Filename  string `json:"filename"`
 	Fixture   string `json:"fixture"`
 	Lines     int    `json:"lines"`

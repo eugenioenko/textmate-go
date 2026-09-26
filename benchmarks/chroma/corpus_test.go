@@ -13,6 +13,9 @@ import (
 // records each scope explicitly; keep it in agreement with them.
 func TestCorpusManifest(t *testing.T) {
 	for _, test := range loadCorpus(t) {
+		if test.Group != "core" && test.Group != "extended" {
+			t.Errorf("%s: unknown group %q", test.Name, test.Group)
+		}
 		if got := grammars.ScopeForFilename(test.Filename); got != test.ScopeName {
 			t.Errorf("%s: scope %q, grammars resolves %q", test.Name, test.ScopeName, got)
 		}
