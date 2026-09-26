@@ -226,18 +226,49 @@ func TestInjectionWinsEarlierOrLeftPriorityTie(t *testing.T) {
 				}},
 			}
 
-			matched := matchRuleOrInjections(
+			matched, ok := matchRuleOrInjections(
 				grammar,
 				oniguruma.NewString("xy\n"),
 				true,
 				0,
 				tokenizerTestRootStack(rootID),
 				-1,
+				&matchBuffers{},
 			)
-			if matched == nil || matched.matchedRuleID != test.wantMatchedRule {
+			if !ok || matched.matchedRuleID != test.wantMatchedRule {
 				t.Fatalf("matched %#v, want rule %d", matched, test.wantMatchedRule)
 			}
 		})
+	}
+}
+
+func TestInjectionCandidateDoesNotOverwriteEarlierWinner(t *testing.T) {
+	rootID, firstID, secondID := ruleID(1), ruleID(2), ruleID(3)
+	first := newMatchRule(nil, firstID, nil, `x`, nil)
+	second := newMatchRule(nil, secondID, nil, `y`, nil)
+	root := newIncludeOnlyRule(nil, rootID, nil, nil, compilePatternsResult{})
+	grammar := &tokenizerTestGrammar{
+		rules: map[ruleID]rule{rootID: root, firstID: first, secondID: second},
+		injections: []injection{
+			{matcher: func([]string) bool { return true }, ruleID: firstID},
+			{matcher: func([]string) bool { return true }, ruleID: secondID},
+		},
+	}
+
+	matched, ok := matchRuleOrInjections(
+		grammar,
+		oniguruma.NewString("xy\n"),
+		true,
+		0,
+		tokenizerTestRootStack(rootID),
+		-1,
+		&matchBuffers{},
+	)
+	if !ok || matched.matchedRuleID != firstID {
+		t.Fatalf("matched %#v, want first injection", matched)
+	}
+	if got, want := matched.captureIndices[0], (oniguruma.Capture{Start: 0, End: 1}); got != want {
+		t.Fatalf("winning capture = %+v, want %+v", got, want)
 	}
 }
 
@@ -250,10 +281,10 @@ func TestMatchRuleAtResolvesAAndGFromTokenizerPosition(t *testing.T) {
 		line := oniguruma.NewString("first\n")
 		stack := tokenizerTestRootStack(rootID)
 
-		if got := matchRuleAt(grammar, line, true, 0, stack, -1); got == nil || got.matchedRuleID != anchoredID {
+		if got, ok := matchRuleAt(grammar, line, true, 0, stack, -1, nil); !ok || got.matchedRuleID != anchoredID {
 			t.Fatalf("first-line match = %#v, want rule %d", got, anchoredID)
 		}
-		if got := matchRuleAt(grammar, line, false, 0, stack, -1); got != nil {
+		if got, ok := matchRuleAt(grammar, line, false, 0, stack, -1, nil); ok {
 			t.Fatalf("non-first-line \\A unexpectedly matched: %#v", got)
 		}
 	})
@@ -266,10 +297,10 @@ func TestMatchRuleAtResolvesAAndGFromTokenizerPosition(t *testing.T) {
 		line := oniguruma.NewString("ax\n")
 		stack := tokenizerTestRootStack(rootID)
 
-		if got := matchRuleAt(grammar, line, false, 1, stack, 1); got == nil || got.matchedRuleID != anchoredID {
+		if got, ok := matchRuleAt(grammar, line, false, 1, stack, 1, nil); !ok || got.matchedRuleID != anchoredID {
 			t.Fatalf("anchor-position match = %#v, want rule %d", got, anchoredID)
 		}
-		if got := matchRuleAt(grammar, line, false, 1, stack, -1); got != nil {
+		if got, ok := matchRuleAt(grammar, line, false, 1, stack, -1, nil); ok {
 			t.Fatalf("disabled \\G unexpectedly matched: %#v", got)
 		}
 	})

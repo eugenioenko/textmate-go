@@ -170,6 +170,8 @@ type OnigScanner struct {
 	mu       sync.Mutex
 	searches [][variantCount]cachedSearch
 	scratch  []regexp2.CaptureIndex
+	captures []Capture
+	winner   []Capture
 	disabled []bool
 
 	diagnosticsMu sync.Mutex
@@ -381,8 +383,19 @@ func (s *OnigScanner) addDiagnostic(d Diagnostic) {
 // FindNextMatch returns the earliest match at or after start, breaking ties by
 // the lowest source-pattern index.
 func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *Match {
-	if s == nil || input == nil || start > len(input.runes) {
+	match, ok := s.FindNextMatchInto(input, start, opts, nil)
+	if !ok {
 		return nil
+	}
+	return &match
+}
+
+// FindNextMatchInto is the allocation-reusing form of FindNextMatch. Captures
+// are written into dst when its capacity is sufficient; callers may reuse the
+// returned capture slice as dst on their next call.
+func (s *OnigScanner) FindNextMatchInto(input *String, start int, opts FindOption, dst []Capture) (Match, bool) {
+	if s == nil || input == nil || start > len(input.runes) {
+		return Match{}, false
 	}
 	if start < 0 {
 		start = 0
@@ -400,17 +413,17 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 	}()
 	var diagnostics []Diagnostic
 	bestIndex := -1
-	var bestCaptures []Capture
+	s.winner = s.winner[:0]
 	for index, pattern := range s.patterns {
 		if pattern.broken || s.disabled[index] {
 			continue
 		}
 		variant := pattern.variantKey(allowA, allowG, allowZ)
 		maxStartExclusive := -1
-		if bestCaptures != nil {
+		if len(s.winner) != 0 {
 			// Patterns are visited in tie-breaking order. Once an earlier pattern
 			// has matched at q, a later one can only win by starting before q.
-			maxStartExclusive = bestCaptures[0].Start
+			maxStartExclusive = s.winner[0].Start
 		}
 		// A failed unanchored search from p cannot succeed from a later
 		// position on the same input. This is not true for \G: its meaning is
@@ -426,18 +439,20 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 				}
 				captures = cached
 			} else {
-				captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive)
+				captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive, cache.captures[:0])
 				// A bounded miss only proves that the pattern cannot beat this
 				// call's winner. It may still match later on the same input.
-				if err == nil && (captures != nil || maxStartExclusive < 0) {
-					*cache = cachedSearch{
-						inputID: input.id, start: start, captures: captures,
-						failed: captures == nil, valid: true,
-					}
+				if err == nil && (len(captures) != 0 || maxStartExclusive < 0) {
+					cache.inputID = input.id
+					cache.start = start
+					cache.captures = captures
+					cache.failed = len(captures) == 0
+					cache.valid = true
 				}
 			}
 		} else {
-			captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive)
+			captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive, s.captures[:0])
+			s.captures = captures
 		}
 		if err != nil {
 			kind := DiagnosticMatchError
@@ -456,25 +471,32 @@ func (s *OnigScanner) FindNextMatch(input *String, start int, opts FindOption) *
 			})
 			continue
 		}
-		if captures == nil {
+		if len(captures) == 0 {
 			continue
 		}
-		if bestCaptures == nil || captures[0].Start < bestCaptures[0].Start {
-			bestIndex, bestCaptures = index, captures
+		if len(s.winner) == 0 || captures[0].Start < s.winner[0].Start {
+			bestIndex = index
+			s.winner = append(s.winner[:0], captures...)
 			if captures[0].Start == start {
 				break
 			}
 		}
+	}
+	found := len(s.winner) != 0
+	var result Match
+	if found {
+		dst = append(dst[:0], s.winner...)
+		result = Match{Index: bestIndex, Captures: dst}
 	}
 	s.mu.Unlock()
 	locked = false
 	for _, diagnostic := range diagnostics {
 		s.addDiagnostic(diagnostic)
 	}
-	if bestCaptures == nil {
-		return nil
+	if !found {
+		return Match{}, false
 	}
-	return &Match{Index: bestIndex, Captures: bestCaptures}
+	return result, true
 }
 
 // lookup reuses the earliest result of a previous search when the new start
@@ -550,10 +572,16 @@ func (p *compiledPattern) compileVariants() error {
 }
 
 // match must be called with s.mu held because it reuses s.scratch.
-func (s *OnigScanner) match(regex *regexp2.Regexp, text []rune, start, maxStartExclusive int) (captures []Capture, err error) {
+func (s *OnigScanner) match(
+	regex *regexp2.Regexp,
+	text []rune,
+	start, maxStartExclusive int,
+	dst []Capture,
+) (captures []Capture, err error) {
+	captures = dst[:0]
 	defer func() {
 		if value := recover(); value != nil {
-			captures = nil
+			captures = dst[:0]
 			err = regexpPanicError{operation: "matching", value: value}
 		}
 	}()
@@ -570,15 +598,14 @@ func (s *OnigScanner) match(regex *regexp2.Regexp, text []rune, start, maxStartE
 		s.scratch = indices[:0]
 	}
 	if err != nil || len(indices) == 0 {
-		return nil, err
+		return captures, err
 	}
-	captures = make([]Capture, len(indices))
-	for index, capture := range indices {
+	for _, capture := range indices {
 		if capture.RuneIndex < 0 {
-			captures[index] = Capture{Start: -1, End: -1}
+			captures = append(captures, Capture{Start: -1, End: -1})
 			continue
 		}
-		captures[index] = Capture{Start: capture.RuneIndex, End: capture.RuneIndex + capture.RuneLength}
+		captures = append(captures, Capture{Start: capture.RuneIndex, End: capture.RuneIndex + capture.RuneLength})
 	}
 	return captures, nil
 }

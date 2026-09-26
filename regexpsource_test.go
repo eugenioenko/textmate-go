@@ -143,12 +143,12 @@ func TestCompiledRulePreservesSourceOrderForMatchPrecedence(t *testing.T) {
 		t.Fatalf("length = %d, want 3", list.length())
 	}
 	compiled := list.compile()
-	match := compiled.findNextMatch(oniguruma.NewString("zx"), 0, oniguruma.FindOptionNone)
-	if match == nil || match.ruleID != endRuleID {
+	match, ok := compiled.findNextMatch(oniguruma.NewString("zx"), 0, oniguruma.FindOptionNone, nil)
+	if !ok || match.ruleID != endRuleID {
 		t.Fatalf("first match = %#v, want end rule", match)
 	}
-	match = compiled.findNextMatch(oniguruma.NewString("x"), 0, oniguruma.FindOptionNone)
-	if match == nil || match.ruleID != 20 {
+	match, ok = compiled.findNextMatch(oniguruma.NewString("x"), 0, oniguruma.FindOptionNone, match.captureIndices[:0])
+	if !ok || match.ruleID != 20 {
 		t.Fatalf("tie winner = %#v, want rule 20", match)
 	}
 	if match.captureIndices[0] != (oniguruma.Capture{Start: 0, End: 1}) {
@@ -156,8 +156,8 @@ func TestCompiledRulePreservesSourceOrderForMatchPrecedence(t *testing.T) {
 	}
 
 	earliest := newCompiledRule([]string{`z`, `x`}, []ruleID{40, 41})
-	match = earliest.findNextMatch(oniguruma.NewString("xz"), 0, oniguruma.FindOptionNone)
-	if match == nil || match.ruleID != 41 {
+	match, ok = earliest.findNextMatch(oniguruma.NewString("xz"), 0, oniguruma.FindOptionNone, match.captureIndices[:0])
+	if !ok || match.ruleID != 41 {
 		t.Fatalf("earliest match = %#v, want rule 41", match)
 	}
 }
@@ -181,14 +181,14 @@ func TestCompiledAnchorVariantsControlMatches(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			match := list.compileAG(test.allowA, test.allowG).findNextMatch(input, 0, oniguruma.FindOptionNone)
+			match, ok := list.compileAG(test.allowA, test.allowG).findNextMatch(input, 0, oniguruma.FindOptionNone, nil)
 			if !test.wantMatch {
-				if match != nil {
+				if ok {
 					t.Fatalf("match = %#v, want nil", match)
 				}
 				return
 			}
-			if match == nil || match.ruleID != test.want {
+			if !ok || match.ruleID != test.want {
 				t.Fatalf("match = %#v, want rule %d", match, test.want)
 			}
 		})
