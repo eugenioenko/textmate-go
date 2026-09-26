@@ -16,7 +16,8 @@ textmate-go is faster.
 ## Setup
 
 - Go 1.25 and Node 20 or later.
-- The sibling `../regexp2` checkout that textmate-go's `go.mod` replaces.
+- The tagged `github.com/eugenioenko/regexp2/v2` fork is downloaded normally
+  by the Go toolchain; no sibling checkout or `replace` directive is needed.
 - vscode-oniguruma, installed by the conformance harness:
   `cd conformance && pnpm install`.
 - A compiled [vscode-textmate](https://github.com/microsoft/vscode-textmate)

@@ -371,9 +371,10 @@ the 48-case differential fuzz gate remain green.
 
 The change removes most transient allocation pressure, but regexp execution
 still dominates CPU and TSX still shows one slow early sample. The next CPU
-target is reducing the 88–127 separate pattern searches per line. The current
-module uses a sibling `../regexp2` replacement; publishing requires upstreaming
-the API or hosting a durable fork.
+target is reducing the 88–127 separate pattern searches per line. At this
+point the module still used a sibling `../regexp2` replacement; that was later
+resolved by publishing the maintained `github.com/eugenioenko/regexp2/v2`
+module and depending on its tagged release directly.
 
 A follow-up bounded later pattern searches at the current winner's start while
 keeping the full line visible to lookaheads. Medians fell to 98.9us/line for
@@ -527,3 +528,39 @@ C++ went from 415 to 272us/line (2.9x to 1.9x vscode-textmate) with the other
 languages unchanged and conformance, differential, and fuzz suites green. The
 remainder is interpreter throughput: 78% of C++ time is regexp2's backtracking
 loop, and the worst pattern still averages ~118us per call.
+
+### 2026-09-25: post-optimization comparison rerun
+
+A fresh `COUNT=5 BENCH_TIME=1s make bench-compare` completed successfully with
+textmate-go at `aff1d00`, the regexp2 fork at `5887af5`, and vscode-textmate at
+`fbe4996`. Results are the fastest of five runs in us/line; ratios are
+textmate-go over the comparison engine, so values below 1 are faster.
+
+| Case | textmate-go | allocs/line | vscode-textmate | Chroma | vs JS | vs Chroma |
+|---|---:|---:|---:|---:|---:|---:|
+| TSX | 39.8 | 42.8 | 19.7 | 17.2 | 2.02x | 2.31x |
+| HTML | 22.7 | 62.4 | 25.2 | 5.2 | 0.90x | 4.34x |
+| Go | 9.5 | 31.3 | 13.7 | 20.2 | 0.69x | 0.47x |
+| Markdown | 15.5 | 29.3 | 13.7 | 19.0 | 1.13x | 0.82x |
+| TypeScript | 77.9 | 74.2 | 55.5 | 26.7 | 1.40x | 2.92x |
+| JavaScript | 68.8 | 74.8 | 61.2 | 25.7 | 1.13x | 2.68x |
+| CSS | 24.8 | 53.7 | 72.6 | 11.2 | 0.34x | 2.23x |
+| JSON | 8.5 | 52.8 | 7.2 | 9.2 | 1.18x | 0.92x |
+| Python | 45.0 | 71.1 | 46.8 | 52.7 | 0.96x | 0.85x |
+| Rust | 26.9 | 48.6 | 30.7 | 28.8 | 0.88x | 0.94x |
+| Java | 57.6 | 57.8 | 38.8 | 34.5 | 1.49x | 1.67x |
+| C++ | 257.4 | 106.7 | 152.9 | 43.9 | 1.68x | 5.86x |
+| Ruby | 40.7 | 51.1 | 56.8 | 62.7 | 0.72x | 0.65x |
+| Shell | 28.4 | 86.7 | 31.1 | 22.4 | 0.91x | 1.27x |
+
+textmate-go beat vscode-textmate in seven of fourteen cases. The geometric
+mean ratio was 1.02x, effectively even across languages, while the total-time
+ratio weighted by the configured line counts was 1.16x because C++ dominates
+absolute runtime. C++ improved again from the documented 272 to 257us/line.
+TSX was slower than the earlier 33.7us/line reference; a focused five-run
+repeat measured 41.3us/line versus 20.6 for vscode-textmate, confirming the
+roughly 2x gap in this session rather than a single-run outlier.
+
+The Chroma column remains a throughput reference, not an equivalent semantic
+comparison: Chroma starts each line at its root state while both TextMate
+engines carry multiline rule state between lines.

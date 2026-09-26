@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/dlclark/regexp2/v2"
+	"github.com/eugenioenko/regexp2/v2"
 )
 
 const (
