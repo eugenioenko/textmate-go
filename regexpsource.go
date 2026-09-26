@@ -262,7 +262,7 @@ func (l *regexpSourceList) compileResolved(resolveAnchors, allowA, allowG bool) 
 }
 
 type compiledRule struct {
-	scanner oniguruma.Scanner
+	scanner *oniguruma.OnigScanner
 	regexps []string
 	rules   []ruleID
 }
@@ -306,15 +306,16 @@ func (r *compiledRule) findNextMatch(
 	input *oniguruma.String,
 	startPosition int,
 	options oniguruma.FindOption,
-) *findNextMatchResult {
-	match := r.scanner.FindNextMatch(input, startPosition, options)
-	if match == nil {
-		return nil
+	dst []oniguruma.Capture,
+) (findNextMatchResult, bool) {
+	match, ok := r.scanner.FindNextMatchInto(input, startPosition, options, dst)
+	if !ok {
+		return findNextMatchResult{}, false
 	}
-	return &findNextMatchResult{
+	return findNextMatchResult{
 		ruleID:         r.rules[match.Index],
 		captureIndices: match.Captures,
-	}
+	}, true
 }
 
 func hasNumericBackReference(source string) bool {

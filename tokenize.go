@@ -2,10 +2,13 @@ package textmate
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/eugenioenko/textmate-go/oniguruma"
 )
+
+var matchBuffersPool sync.Pool
 
 type injection struct {
 	debugSelector string
@@ -92,13 +95,17 @@ func tokenizeStringWithBudget(
 ) tokenizeStringResult {
 	lineLength := lineText.Len()
 	anchorPosition := -1
+	buffers := acquireMatchBuffers()
+	defer releaseMatchBuffers(buffers)
 
 	if budget.exceeded() {
 		return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
 	}
 
 	if checkWhileConditions {
-		checked := checkWhileWithBudget(grammar, lineText, isFirstLine, linePos, stack, handler, budget)
+		checked := checkWhileWithBudget(
+			grammar, lineText, isFirstLine, linePos, stack, handler, budget, &buffers.while,
+		)
 		stack = checked.stack
 		linePos = checked.linePos
 		isFirstLine = checked.isFirstLine
@@ -113,11 +120,13 @@ func tokenizeStringWithBudget(
 			return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
 		}
 
-		matched := matchRuleOrInjections(grammar, lineText, isFirstLine, linePos, stack, anchorPosition)
+		matched, matchedOK := matchRuleOrInjections(
+			grammar, lineText, isFirstLine, linePos, stack, anchorPosition, buffers,
+		)
 		if budget.exceeded() {
 			return tokenizeStringResult{stack: stack, stoppedEarly: true, stoppedAt: linePos}
 		}
-		if matched == nil || len(matched.captureIndices) == 0 {
+		if !matchedOK || len(matched.captureIndices) == 0 {
 			handler.handle(stack.contentNameScopesList, lineLength)
 			return tokenizeStringResult{stack: stack}
 		}
@@ -270,6 +279,7 @@ func checkWhile(
 	stack *StateStack,
 	handler tokenHandler,
 ) whileCheckResult {
+	var captureBuffer []oniguruma.Capture
 	return checkWhileWithBudget(
 		grammar,
 		lineText,
@@ -278,6 +288,7 @@ func checkWhile(
 		stack,
 		handler,
 		tokenizationBudget{},
+		&captureBuffer,
 	)
 }
 
@@ -289,6 +300,7 @@ func checkWhileWithBudget(
 	stack *StateStack,
 	handler tokenHandler,
 	budget tokenizationBudget,
+	captureBuffer *[]oniguruma.Capture,
 ) whileCheckResult {
 	anchorPosition := -1
 	if stack != nil && stack.beginRuleCapturedEOL {
@@ -320,14 +332,19 @@ func checkWhileWithBudget(
 			isFirstLine,
 			linePos == anchorPosition,
 		)
-		matched := scanner.findNextMatch(lineText, linePos, oniguruma.FindOptionNone)
+		matched, matchedOK := scanner.findNextMatch(
+			lineText, linePos, oniguruma.FindOptionNone, (*captureBuffer)[:0],
+		)
+		if matchedOK {
+			*captureBuffer = matched.captureIndices
+		}
 		if budget.exceeded() {
 			return whileCheckResult{
 				stack: stack, linePos: linePos, anchorPosition: anchorPosition,
 				isFirstLine: isFirstLine, stoppedEarly: true,
 			}
 		}
-		if matched == nil || matched.ruleID != whileRuleID {
+		if !matchedOK || matched.ruleID != whileRuleID {
 			stack = active.stack.pop()
 			break
 		}
@@ -369,6 +386,28 @@ type matchResult struct {
 	priorityMatch  bool
 }
 
+type matchBuffers struct {
+	regular            []oniguruma.Capture
+	injectionBest      []oniguruma.Capture
+	injectionCandidate []oniguruma.Capture
+	while              []oniguruma.Capture
+}
+
+func acquireMatchBuffers() *matchBuffers {
+	if buffers, ok := matchBuffersPool.Get().(*matchBuffers); ok {
+		return buffers
+	}
+	return &matchBuffers{}
+}
+
+func releaseMatchBuffers(buffers *matchBuffers) {
+	buffers.regular = buffers.regular[:0]
+	buffers.injectionBest = buffers.injectionBest[:0]
+	buffers.injectionCandidate = buffers.injectionCandidate[:0]
+	buffers.while = buffers.while[:0]
+	matchBuffersPool.Put(buffers)
+}
+
 func matchRuleOrInjections(
 	grammar tokenizerGrammar,
 	lineText *oniguruma.String,
@@ -376,27 +415,35 @@ func matchRuleOrInjections(
 	linePos int,
 	stack *StateStack,
 	anchorPosition int,
-) *matchResult {
-	regular := matchRuleAt(grammar, lineText, isFirstLine, linePos, stack, anchorPosition)
+	buffers *matchBuffers,
+) (matchResult, bool) {
+	regular, regularOK := matchRuleAt(
+		grammar, lineText, isFirstLine, linePos, stack, anchorPosition, buffers.regular[:0],
+	)
+	if regularOK {
+		buffers.regular = regular.captureIndices
+	}
 	injections := grammar.getInjections()
 	if len(injections) == 0 {
-		return regular
+		return regular, regularOK
 	}
 
-	injected := matchInjections(injections, grammar, lineText, isFirstLine, linePos, stack, anchorPosition)
-	if injected == nil {
-		return regular
+	injected, injectedOK := matchInjections(
+		injections, grammar, lineText, isFirstLine, linePos, stack, anchorPosition, buffers,
+	)
+	if !injectedOK {
+		return regular, regularOK
 	}
-	if regular == nil {
-		return injected
+	if !regularOK {
+		return injected, true
 	}
 
 	regularStart := regular.captureIndices[0].Start
 	injectedStart := injected.captureIndices[0].Start
 	if injectedStart < regularStart || (injected.priorityMatch && injectedStart == regularStart) {
-		return injected
+		return injected, true
 	}
-	return regular
+	return regular, true
 }
 
 func matchRuleAt(
@@ -406,20 +453,21 @@ func matchRuleAt(
 	linePos int,
 	stack *StateStack,
 	anchorPosition int,
-) *matchResult {
+	dst []oniguruma.Capture,
+) (matchResult, bool) {
 	if stack == nil {
-		return nil
+		return matchResult{}, false
 	}
 	activeRule := grammar.getRule(stack.ruleID)
 	if activeRule == nil {
-		return nil
+		return matchResult{}, false
 	}
 	scanner := activeRule.compileAG(grammar, stack.endRule, isFirstLine, linePos == anchorPosition)
-	matched := scanner.findNextMatch(lineText, linePos, oniguruma.FindOptionNone)
-	if matched == nil || len(matched.captureIndices) == 0 {
-		return nil
+	matched, ok := scanner.findNextMatch(lineText, linePos, oniguruma.FindOptionNone, dst)
+	if !ok || len(matched.captureIndices) == 0 {
+		return matchResult{}, false
 	}
-	return &matchResult{captureIndices: matched.captureIndices, matchedRuleID: matched.ruleID}
+	return matchResult{captureIndices: matched.captureIndices, matchedRuleID: matched.ruleID}, true
 }
 
 func matchInjections(
@@ -430,13 +478,15 @@ func matchInjections(
 	linePos int,
 	stack *StateStack,
 	anchorPosition int,
-) *matchResult {
+	buffers *matchBuffers,
+) (matchResult, bool) {
 	if stack == nil || stack.contentNameScopesList == nil {
-		return nil
+		return matchResult{}, false
 	}
 
 	bestStart := int(^uint(0) >> 1)
-	var best *matchResult
+	var best matchResult
+	bestOK := false
 	scopes := stack.contentNameScopesList.scopeNames()
 	for _, candidate := range injections {
 		if candidate.matcher == nil || !candidate.matcher(scopes) {
@@ -447,10 +497,13 @@ func matchInjections(
 			continue
 		}
 		scanner := candidateRule.compileAG(grammar, nil, isFirstLine, linePos == anchorPosition)
-		matched := scanner.findNextMatch(lineText, linePos, oniguruma.FindOptionNone)
-		if matched == nil || len(matched.captureIndices) == 0 {
+		matched, ok := scanner.findNextMatch(
+			lineText, linePos, oniguruma.FindOptionNone, buffers.injectionCandidate[:0],
+		)
+		if !ok || len(matched.captureIndices) == 0 {
 			continue
 		}
+		buffers.injectionCandidate = matched.captureIndices
 
 		matchStart := matched.captureIndices[0].Start
 		if matchStart >= bestStart {
@@ -459,16 +512,19 @@ func matchInjections(
 			continue
 		}
 		bestStart = matchStart
-		best = &matchResult{
-			captureIndices: matched.captureIndices,
+		buffers.injectionBest, buffers.injectionCandidate =
+			buffers.injectionCandidate, buffers.injectionBest
+		best = matchResult{
+			captureIndices: buffers.injectionBest,
 			matchedRuleID:  matched.ruleID,
 			priorityMatch:  candidate.priority == -1,
 		}
+		bestOK = true
 		if bestStart == linePos {
 			break
 		}
 	}
-	return best
+	return best, bestOK
 }
 
 func handleCaptures(

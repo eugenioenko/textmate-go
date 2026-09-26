@@ -77,6 +77,27 @@ func TestFindNextMatchBoundedMissDoesNotPoisonCache(t *testing.T) {
 	assertMatch(t, second, &Match{Index: 1, Captures: []Capture{{Start: 3, End: 4}}})
 }
 
+func TestFindNextMatchIntoReusesCaptureBuffer(t *testing.T) {
+	scanner := NewScanner([]string{`(a)(b)`})
+	buffer := make([]Capture, 0, 3)
+	match, ok := scanner.FindNextMatchInto(NewString("ab"), 0, FindOptionNone, buffer)
+	if !ok {
+		t.Fatal("first buffered search did not match")
+	}
+	if len(match.Captures) != 3 || &match.Captures[0] != &buffer[:cap(buffer)][0] {
+		t.Fatalf("first captures did not reuse destination: %+v", match.Captures)
+	}
+
+	first := &match.Captures[0]
+	match, ok = scanner.FindNextMatchInto(NewString("zab"), 0, FindOptionNone, match.Captures[:0])
+	if !ok || match.Captures[0] != (Capture{Start: 1, End: 3}) {
+		t.Fatalf("second buffered search = %+v", match)
+	}
+	if &match.Captures[0] != first {
+		t.Fatal("second buffered search replaced the destination allocation")
+	}
+}
+
 func TestStringAndRuneOffsets(t *testing.T) {
 	input := NewString("a😀é")
 	if input.Content() != "a😀é" || input.Len() != 3 {
