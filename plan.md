@@ -426,3 +426,20 @@ Append an entry after each phase: date, what was done, fixture pass counts (for 
   tests and the complete race suite pass with the default clock.
   Performance remains the deliberately separate follow-up, and Phase 5 remains
   gated on maintainer approval.
+- **2026-09-25 — Extended performance regression reporting added.** Split the
+  engine-comparison manifest into the original 14-case `core` group and a new
+  six-case `extended` group covering C#, PHP, SQL, YAML, Haskell, and Vue. The
+  default three-engine benchmark remains the faster core suite, while
+  `make bench-compare-extended` runs all 20 cases against textmate-go,
+  vscode-textmate, and Chroma. Added a separate lightweight Go-only benchmark
+  module for pull requests: CI checks out the exact base and head commits,
+  builds each against the same harness and corpus, and alternates three 500 ms
+  passes on one runner without Chroma or vscode-textmate. Benchmark and corpus
+  errors fail the parallel job; timing changes remain informational to avoid a
+  noisy shared-runner threshold. The job publishes timing and allocation
+  deltas to its summary and uses a hidden marker to create or update one PR
+  comment; fork PRs retain the summary because their token is read-only. The
+  first hosted 20-case comparison completed in 2m35s with a -0.1% geometric-
+  mean time change, approximately +/-2% per case, and no material allocation
+  regression. Both the performance job and the complete 3m21s conformance gate
+  passed.
