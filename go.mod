@@ -2,4 +2,4 @@ module github.com/eugenioenko/textmate-go
 
 go 1.25
 
-require github.com/eugenioenko/regexp2/v2 v2.8.1
+require github.com/eugenioenko/regexp2/v2 v2.8.2

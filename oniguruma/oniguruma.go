@@ -207,6 +207,17 @@ type cachedSearch struct {
 	captures []Capture
 	failed   bool
 	valid    bool
+
+	// limit is the last start a match can have on limitInputID, from the
+	// pattern's required content. It holds for every search start, \G included.
+	limitInputID uint64
+	limit        int
+
+	// No match starts in [missStart, missEnd) on missInputID, as proven by
+	// bounded misses. Excluded for \G patterns like the result cache.
+	missInputID uint64
+	missStart   int
+	missEnd     int
 }
 
 const (
@@ -431,15 +442,29 @@ func (s *OnigScanner) FindNextMatchInto(input *String, start int, opts FindOptio
 		// that start advances.
 		var captures []Capture
 		var err error
+		cache := &s.searches[index][variant]
+		if cache.limitInputID != input.id {
+			cache.limitInputID = input.id
+			cache.limit = pattern.variants[variant].LastPossibleStart(input.runes)
+		}
+		if cache.limit < start {
+			continue
+		}
 		if !pattern.hasG {
-			cache := &s.searches[index][variant]
 			if cached, failed, ok := cache.lookup(input.id, start); ok {
 				if failed {
 					continue
 				}
 				captures = cached
 			} else {
-				captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive, cache.captures[:0])
+				from := start
+				if cache.missInputID == input.id && start >= cache.missStart && start < cache.missEnd {
+					from = cache.missEnd
+				}
+				if maxStartExclusive >= 0 && from >= maxStartExclusive {
+					continue
+				}
+				captures, err = s.match(pattern.variants[variant], input.runes, from, maxStartExclusive, cache.captures[:0])
 				// A bounded miss only proves that the pattern cannot beat this
 				// call's winner. It may still match later on the same input.
 				if err == nil && (len(captures) != 0 || maxStartExclusive < 0) {
@@ -448,6 +473,12 @@ func (s *OnigScanner) FindNextMatchInto(input *String, start int, opts FindOptio
 					cache.captures = captures
 					cache.failed = len(captures) == 0
 					cache.valid = true
+				} else if err == nil {
+					if cache.missInputID != input.id || start < cache.missStart || start > cache.missEnd {
+						cache.missInputID = input.id
+						cache.missStart = start
+					}
+					cache.missEnd = maxStartExclusive
 				}
 			}
 		} else {
