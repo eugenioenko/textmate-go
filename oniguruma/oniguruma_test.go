@@ -77,6 +77,93 @@ func TestFindNextMatchBoundedMissDoesNotPoisonCache(t *testing.T) {
 	assertMatch(t, second, &Match{Index: 1, Captures: []Capture{{Start: 3, End: 4}}})
 }
 
+func TestFindNextMatchBoundedMissRangeResumesSearch(t *testing.T) {
+	scanner := NewScanner([]string{`x`, `yz`})
+	input := NewString("--x--yz--x")
+	steps := []struct {
+		start int
+		want  *Match
+	}{
+		{0, &Match{Index: 0, Captures: []Capture{{Start: 2, End: 3}}}},
+		{3, &Match{Index: 1, Captures: []Capture{{Start: 5, End: 7}}}},
+		{1, &Match{Index: 0, Captures: []Capture{{Start: 2, End: 3}}}},
+		{0, &Match{Index: 0, Captures: []Capture{{Start: 2, End: 3}}}},
+		{4, &Match{Index: 1, Captures: []Capture{{Start: 5, End: 7}}}},
+	}
+	for _, step := range steps {
+		assertMatch(t, scanner.FindNextMatch(input, step.start, FindOptionNone), step.want)
+	}
+}
+
+func TestFindNextMatchRequiredContentLimit(t *testing.T) {
+	scanner := NewScanner([]string{`\Genum`, `class\s+\w+`, `x`})
+	input := NewString("enum class Color x")
+	assertMatch(t, scanner.FindNextMatch(input, 0, FindOptionNone),
+		&Match{Index: 0, Captures: []Capture{{Start: 0, End: 4}}})
+	assertMatch(t, scanner.FindNextMatch(input, 4, FindOptionNone),
+		&Match{Index: 1, Captures: []Capture{{Start: 5, End: 16}}})
+	assertMatch(t, scanner.FindNextMatch(input, 6, FindOptionNone),
+		&Match{Index: 2, Captures: []Capture{{Start: 17, End: 18}}})
+	assertMatch(t, scanner.FindNextMatch(input, 0, FindOptionNone),
+		&Match{Index: 0, Captures: []Capture{{Start: 0, End: 4}}})
+	assertMatch(t, scanner.FindNextMatch(NewString("enum"), 1, FindOptionNone), nil)
+}
+
+func TestFindNextMatchBoundedMissExcludesBound(t *testing.T) {
+	scanner := NewScanner([]string{`(?<=\Ax)a`, `(?=a)`})
+	input := NewString("xa")
+	assertMatch(t, scanner.FindNextMatch(input, 0, FindOptionNone),
+		&Match{Index: 0, Captures: []Capture{{Start: 1, End: 2}}})
+
+	// The tie at 1 was lost, not missed, so 1 stays searchable once \A fails.
+	assertMatch(t, scanner.FindNextMatch(input, 0, FindOptionNotBeginString),
+		&Match{Index: 1, Captures: []Capture{{Start: 1, End: 1}}})
+}
+
+func TestFindNextMatchCachesAgreeWithFreshScanner(t *testing.T) {
+	patterns := []string{`\bif\b`, `\G[a-z]`, `[a-z]+(?=\()`, `\G\s+`, `"[^"]*"`, `//.*$`, `^\s*#\w+`, `\d+`, `(?<=\.)\w+`, `enum|class`, `=>`, `(?=[a-z])`, `\w`}
+	texts := []string{
+		"  if (foo(1)) { return \"x\" } // done\n",
+		"#include x.y => enum class\n",
+		"a.b.c(12) => \"q\" if\n",
+		"\n",
+	}
+	seed := uint32(1)
+	next := func(n int) int {
+		seed = seed*1664525 + 1013904223
+		return int(seed>>8) % n
+	}
+	options := []FindOption{FindOptionNone, FindOptionNotBeginString, FindOptionNotBeginPosition, FindOptionNotBeginString | FindOptionNotBeginPosition}
+	scanner := NewScanner(patterns)
+	for _, text := range texts {
+		input := NewString(text)
+		for range 400 {
+			start := next(input.Len() + 1)
+			opts := options[next(len(options))]
+			got := scanner.FindNextMatch(input, start, opts)
+			want := NewScanner(patterns).FindNextMatch(NewString(text), start, opts)
+			if !matchesEqual(got, want) {
+				t.Fatalf("%q start %d opts %d: cached %+v, fresh %+v", text, start, opts, got, want)
+			}
+		}
+	}
+}
+
+func matchesEqual(a, b *Match) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.Index != b.Index || len(a.Captures) != len(b.Captures) {
+		return false
+	}
+	for i := range a.Captures {
+		if a.Captures[i] != b.Captures[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestFindNextMatchIntoReusesCaptureBuffer(t *testing.T) {
 	scanner := NewScanner([]string{`(a)(b)`})
 	buffer := make([]Capture, 0, 3)
