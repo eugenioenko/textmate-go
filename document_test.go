@@ -523,3 +523,59 @@ func assertDocumentMatchesSequential(
 		t.Fatalf("EOF state = (%v, %v), want %v", gotEOF, ok, state)
 	}
 }
+
+func TestDocumentMaterializedLinesTracksKnownStates(t *testing.T) {
+	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{})
+	if got := document.MaterializedLines(); got != 0 {
+		t.Fatalf("empty document = %d, want 0", got)
+	}
+
+	lines := make([]string, 100)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("word%d", i)
+	}
+	document.SetLines(lines)
+	if got := document.MaterializedLines(); got != 1 {
+		t.Fatalf("fresh document = %d, want 1: only the first line's start state is known", got)
+	}
+
+	document.Line(10)
+	if got := document.MaterializedLines(); got != 12 {
+		t.Fatalf("after Line(10) = %d, want 12: Line(10) also records line 11's start state", got)
+	}
+
+	edited := append([]string(nil), lines...)
+	edited[5] = `"open`
+	document.SetLines(edited)
+	if got := document.MaterializedLines(); got != 6 {
+		t.Fatalf("after editing line 5 = %d, want 6", got)
+	}
+
+	document.Line(99)
+	if got := document.MaterializedLines(); got != 100 {
+		t.Fatalf("after Line(99) = %d, want 100", got)
+	}
+
+	var nilDocument *Document
+	if got := nilDocument.MaterializedLines(); got != 0 {
+		t.Fatalf("nil document = %d, want 0", got)
+	}
+}
+
+func TestDocumentMaterializedLinesJumpsWhenTailConverges(t *testing.T) {
+	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{})
+	lines := make([]string, 100)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("word%d", i)
+	}
+	document.SetLines(lines)
+	document.Line(99)
+
+	edited := append([]string(nil), lines...)
+	edited[5] = "changed"
+	document.SetLines(edited)
+	document.Line(5)
+	if got := document.MaterializedLines(); got != 100 {
+		t.Fatalf("after reconverging at line 6 = %d, want 100", got)
+	}
+}
