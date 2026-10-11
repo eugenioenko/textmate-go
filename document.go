@@ -51,7 +51,22 @@ type Document struct {
 	cache         map[documentCacheKey]LineResult
 	cacheOrder    []documentCacheKey
 	cacheNext     int
+
+	// partialState is the earliest index i > 0 whose states[i] came from a
+	// line stopped by the time limit, or 0. A time stop can be caused by
+	// transient lock or CPU pressure, so that state, and every state after it,
+	// is recomputed on the next call instead of being kept until an edit.
+	partialState int
+	// partialRetries bounds those recomputations for a line that keeps
+	// exceeding its budget; retryLine is the line last retried.
+	partialRetries int
+	retryLine      int
 }
+
+// maxTimeLimitRetries is how many times a state from a time-stopped line is
+// recomputed before it is kept. A line whose own work exceeds the budget would
+// otherwise cost a full budget on every call.
+const maxTimeLimitRetries = 3
 
 type documentTail struct {
 	states   []*StateStack
@@ -142,14 +157,17 @@ func (d *Document) Line(index int) (LineResult, bool) {
 		return LineResult{}, false
 	}
 
+	d.retryPartialStateLocked()
 	state := d.stateAtLocked(index)
 	result := d.tokenizeLocked(d.lines[index], state)
 	if len(d.states) == index+1 {
 		d.states = append(d.states, result.RuleStack)
 		d.stateSrc = append(d.stateSrc, d.lines[index])
+		d.noteStateLocked(index, result)
 		d.spliceTailLocked(index + 1)
 	} else if !documentStatesEqual(d.states[index+1], result.RuleStack) {
 		d.replaceMaterializedResultLocked(index, result.RuleStack)
+		d.noteStateLocked(index, result)
 	}
 	return result, true
 }
@@ -164,6 +182,7 @@ func (d *Document) MaterializedLines() int {
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.retryPartialStateLocked()
 	return min(len(d.states), len(d.lines))
 }
 
@@ -171,9 +190,10 @@ func (d *Document) MaterializedLines() int {
 // lines, and clears the result cache. Index may equal Len. The next Line or
 // StateAt call recomputes the discarded range.
 //
-// Time-limit stops are never cached, so calling Line again retries that line
-// directly. InvalidateFrom is useful when a stopped line has already supplied
-// state to later lines and the caller wants the complete tail recomputed.
+// Time-limit stops are never cached, and a state that came from one is
+// recomputed on the next Line, StateAt or MaterializedLines call, a bounded
+// number of times. InvalidateFrom forces the complete tail to be recomputed
+// regardless, for example after a grammar or theme change on the caller side.
 func (d *Document) InvalidateFrom(index int) error {
 	if d == nil {
 		return ErrInvalidLineRange
@@ -188,6 +208,10 @@ func (d *Document) InvalidateFrom(index int) error {
 	d.states = d.states[: keep+1 : keep+1]
 	d.stateSrc = d.stateSrc[:keep:keep]
 	d.tail = nil
+	if d.partialState > keep {
+		d.partialState = 0
+	}
+	d.partialRetries = 0
 	clear(d.cache)
 	d.cacheOrder = d.cacheOrder[:0]
 	d.cacheNext = 0
@@ -206,6 +230,7 @@ func (d *Document) StateAt(index int) (*StateStack, bool) {
 	if index < 0 || index > len(d.lines) {
 		return nil, false
 	}
+	d.retryPartialStateLocked()
 	return d.stateAtLocked(index), true
 }
 
@@ -215,9 +240,41 @@ func (d *Document) stateAtLocked(index int) *StateStack {
 		result := d.tokenizeLocked(d.lines[lineIndex], d.states[lineIndex])
 		d.states = append(d.states, result.RuleStack)
 		d.stateSrc = append(d.stateSrc, d.lines[lineIndex])
+		d.noteStateLocked(lineIndex, result)
 		d.spliceTailLocked(lineIndex + 1)
 	}
 	return d.states[index]
+}
+
+// noteStateLocked records that states[lineIndex+1] came from result.
+func (d *Document) noteStateLocked(lineIndex int, result LineResult) {
+	if result.StoppedReason == StopReasonTimeLimit {
+		if d.partialState == 0 || lineIndex+1 < d.partialState {
+			d.partialState = lineIndex + 1
+		}
+		return
+	}
+	if lineIndex == d.retryLine {
+		d.partialRetries = 0
+	}
+}
+
+// retryPartialStateLocked discards the states from the earliest time-stopped
+// line on, so they are recomputed lazily. States derived from the partial
+// state are not reused through a tail: an equal state found later could still
+// lead back into states built on another stopped line.
+func (d *Document) retryPartialStateLocked() {
+	index := d.partialState
+	if index == 0 || d.partialRetries >= maxTimeLimitRetries {
+		return
+	}
+	d.partialState = 0
+	d.partialRetries++
+	d.retryLine = index - 1
+	keep := min(index-1, len(d.stateSrc))
+	d.states = d.states[: keep+1 : keep+1]
+	d.stateSrc = d.stateSrc[:keep:keep]
+	d.tail = nil
 }
 
 func (d *Document) tokenizeLocked(line string, state *StateStack) LineResult {
@@ -288,9 +345,16 @@ func (d *Document) setLinesLocked(lines []string) {
 	d.states = oldStates[: keep+1 : keep+1]
 	d.stateSrc = oldStateSrc[:keep:keep]
 	d.tail = nil
+	d.partialRetries = 0
+	reusable := true
+	if d.partialState > keep {
+		// The old suffix may hold states derived from a time-stopped line.
+		d.partialState = 0
+		reusable = false
+	}
 
 	oldTailStart := len(oldLines) - suffix
-	if suffix > 0 && oldTailStart <= len(oldStateSrc) {
+	if reusable && suffix > 0 && oldTailStart <= len(oldStateSrc) {
 		d.tail = &documentTail{
 			states:   oldStates,
 			stateSrc: oldStateSrc,
