@@ -404,6 +404,90 @@ func TestDocumentSuccessfulRetryRepairsMaterializedTail(t *testing.T) {
 	assertDocumentMatchesSequential(t, document, document.grammar, lines)
 }
 
+func TestDocumentRetriesTimeStoppedStateForLaterLines(t *testing.T) {
+	grammar := newDocumentTestGrammar()
+	document := NewDocument(grammar, DocumentOptions{
+		TokenizeOptions: TokenizeOptions{TimeLimit: 1},
+	})
+	lines := []string{`"open`, "inside", `"`, "tail"}
+	document.SetLines(lines)
+	if _, ok := document.StateAt(document.Len()); !ok {
+		t.Fatal("failed to materialize time-stopped document")
+	}
+
+	// A later call succeeds once the transient pressure is gone. Reading a line
+	// below the stopped one, without asking for the stopped line itself, must
+	// not reuse the state the stopped line left behind.
+	document.options.TimeLimit = 0
+	want := grammar.TokenizeLine("inside", grammar.TokenizeLine(`"open`, nil).RuleStack)
+	got, ok := document.Line(1)
+	if !ok || !tokenValuesEqual(got.Tokens, want.Tokens) || !got.RuleStack.Equal(want.RuleStack) {
+		t.Fatalf("Line(1) after the budget recovered = %#v, want %#v", got, want)
+	}
+	assertDocumentMatchesSequential(t, document, grammar, lines)
+}
+
+func TestDocumentMaterializedLinesExcludesTimeStoppedStates(t *testing.T) {
+	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{
+		TokenizeOptions: TokenizeOptions{TimeLimit: 1},
+	})
+	document.SetLines([]string{`"open`, "inside", `"`, "tail"})
+	document.StateAt(document.Len())
+
+	if got := document.MaterializedLines(); got != 1 {
+		t.Fatalf("MaterializedLines after a time stop on line 0 = %d, want 1", got)
+	}
+}
+
+func TestDocumentBoundsRetriesOfPersistentTimeStops(t *testing.T) {
+	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{
+		TokenizeOptions: TokenizeOptions{TimeLimit: 1},
+	})
+	lines := []string{`"open`, "inside", `"`, "tail"}
+	document.SetLines(lines)
+
+	for range maxTimeLimitRetries + 1 {
+		if _, ok := document.Line(len(lines) - 1); !ok {
+			t.Fatal("last line was not found")
+		}
+	}
+	if len(document.states) != len(lines)+1 {
+		t.Fatalf("states after exhausted retries = %d, want %d", len(document.states), len(lines)+1)
+	}
+	for range 3 {
+		document.Line(len(lines) - 1)
+		if len(document.states) != len(lines)+1 {
+			t.Fatal("a persistent time stop was recomputed after its retries ran out")
+		}
+	}
+
+	// An edit starts a new budget of retries.
+	document.SetLines(append([]string{"lead"}, lines...))
+	if document.partialRetries != 0 {
+		t.Fatalf("retries after an edit = %d, want 0", document.partialRetries)
+	}
+}
+
+func TestDocumentEditAfterTimeStopDoesNotReuseItsStates(t *testing.T) {
+	grammar := newDocumentTestGrammar()
+	document := NewDocument(grammar, DocumentOptions{
+		TokenizeOptions: TokenizeOptions{TimeLimit: 1},
+	})
+	lines := []string{"head", `"open`, "inside", `"`, "tail"}
+	document.SetLines(lines)
+	document.StateAt(document.Len())
+
+	document.options.TimeLimit = 0
+	edited := append([]string{"new head"}, lines[1:]...)
+	document.SetLines(edited)
+	want := grammar.TokenizeLine("inside", grammar.TokenizeLine(`"open`, grammar.TokenizeLine("new head", nil).RuleStack).RuleStack)
+	got, ok := document.Line(2)
+	if !ok || !tokenValuesEqual(got.Tokens, want.Tokens) || !got.RuleStack.Equal(want.RuleStack) {
+		t.Fatalf("Line(2) after an edit above a time stop = %#v, want %#v", got, want)
+	}
+	assertDocumentMatchesSequential(t, document, grammar, edited)
+}
+
 func TestDocumentCachesDeterministicLineLimitStops(t *testing.T) {
 	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{
 		TokenizeOptions: TokenizeOptions{MaxLineRunes: 2},
