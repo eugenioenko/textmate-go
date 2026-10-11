@@ -154,6 +154,19 @@ func (d *Document) Line(index int) (LineResult, bool) {
 	return result, true
 }
 
+// MaterializedLines returns how many leading lines have a known start state.
+// Line(index) for an index below it tokenizes only that line; a larger index
+// first tokenizes every line from MaterializedLines up to it. An edit lowers it
+// to the first changed line until recomputation converges with the old tail.
+func (d *Document) MaterializedLines() int {
+	if d == nil {
+		return 0
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return min(len(d.states), len(d.lines))
+}
+
 // InvalidateFrom discards materialized states for line index and all following
 // lines, and clears the result cache. Index may equal Len. The next Line or
 // StateAt call recomputes the discarded range.
