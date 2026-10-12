@@ -1,7 +1,5 @@
 # textmate-go
 
-[![CI](https://github.com/eugenioenko/textmate-go/actions/workflows/ci.yml/badge.svg)](https://github.com/eugenioenko/textmate-go/actions/workflows/ci.yml)
-
 `textmate-go` is a pure-Go port of Microsoft's
 [`vscode-textmate`](https://github.com/microsoft/vscode-textmate). It provides
 line-oriented TextMate grammar tokenization, reusable state stacks, and
