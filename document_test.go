@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -280,6 +281,68 @@ func TestDocumentRandomEditsMatchSequentialTokenization(t *testing.T) {
 		lines = next
 
 		assertDocumentMatchesSequential(t, document, grammar, lines)
+	}
+}
+
+func TestDocumentPartialReadsBetweenEditsMatchSequentialTokenization(t *testing.T) {
+	random := rand.New(rand.NewSource(7))
+	grammar := newDocumentTestGrammar()
+	document := NewDocument(grammar, DocumentOptions{CacheCapacity: 32})
+	choices := []string{"plain", `"open`, `close"`, "éclair", "😀", "", "tail"}
+	lines := make([]string, 60)
+	for index := range lines {
+		lines[index] = choices[random.Intn(len(choices))]
+	}
+	document.SetLines(lines)
+
+	for iteration := range 500 {
+		// Reading only some lines leaves edits unconverged, so later edits land
+		// on a pending tail or beyond the materialized states.
+		for range random.Intn(3) {
+			if len(lines) > 0 {
+				document.Line(random.Intn(len(lines)))
+			}
+		}
+		start := random.Intn(len(lines) + 1)
+		end := start + random.Intn(min(len(lines)-start, 3)+1)
+		replacement := make([]string, random.Intn(4))
+		for index := range replacement {
+			replacement[index] = choices[random.Intn(len(choices))]
+		}
+		if err := document.ReplaceLines(start, end, replacement); err != nil {
+			t.Fatalf("edit %d [%d,%d): %v", iteration, start, end, err)
+		}
+		lines = slices.Concat(lines[:start:start], replacement, lines[end:])
+		if iteration%10 == 9 {
+			assertDocumentMatchesSequential(t, document, grammar, lines)
+		}
+	}
+	assertDocumentMatchesSequential(t, document, grammar, lines)
+}
+
+func TestDocumentReplaceLinesSplicesInPlace(t *testing.T) {
+	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{})
+	lines := make([]string, 100)
+	for index := range lines {
+		lines[index] = fmt.Sprintf("plain %d", index)
+	}
+	document.SetLines(lines)
+	if _, ok := document.StateAt(len(lines)); !ok {
+		t.Fatal("failed to materialize original table")
+	}
+	lineArray, stateArray := &document.lines[0], &document.states[0]
+
+	if err := document.ReplaceLines(50, 51, []string{"typed 50"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := document.Line(50); !ok {
+		t.Fatal("edited line was not found")
+	}
+	if document.tail != nil || len(document.states) != len(lines)+1 {
+		t.Fatalf("same-length edit did not converge in place: tail=%v states=%d", document.tail, len(document.states))
+	}
+	if &document.lines[0] != lineArray || &document.states[0] != stateArray {
+		t.Fatal("same-length edit reallocated the line or state table")
 	}
 }
 

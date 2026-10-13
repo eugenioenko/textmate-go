@@ -58,3 +58,27 @@ func BenchmarkDocumentEditTailReuse(b *testing.B) {
 		benchmarkDocumentState, _ = document.StateAt(len(lines))
 	}
 }
+
+func BenchmarkDocumentTypeInLargeDocument(b *testing.B) {
+	lines := make([]string, 1_000_000)
+	for index := range lines {
+		lines[index] = fmt.Sprintf("plain line %d", index)
+	}
+	document := NewDocument(newDocumentTestGrammar(), DocumentOptions{})
+	document.SetLines(lines)
+	benchmarkDocumentState, _ = document.StateAt(len(lines))
+	const middle = 500_000
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for iteration := range b.N {
+		text := "typed even"
+		if iteration%2 != 0 {
+			text = "typed odd"
+		}
+		if err := document.ReplaceLines(middle, middle+1, []string{text}); err != nil {
+			b.Fatal(err)
+		}
+		benchmarkDocumentResult, _ = document.Line(middle)
+	}
+}
