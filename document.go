@@ -2,6 +2,7 @@ package textmate
 
 import (
 	"errors"
+	"slices"
 	"sync"
 )
 
@@ -73,6 +74,10 @@ type documentTail struct {
 	stateSrc []string
 	oldStart int
 	newStart int
+	// inPlace marks a tail that ReplaceLines shifted into the arrays the
+	// materialized prefix grows into: states and stateSrc already have the new
+	// layout, so convergence adopts them instead of copying the tail.
+	inPlace bool
 }
 
 type documentCacheKey struct {
@@ -122,6 +127,10 @@ func (d *Document) SetLines(lines []string) {
 // ReplaceLines replaces the half-open line range [start, end) with a shallow
 // copy of replacement. It returns ErrInvalidLineRange without changing the
 // document when the range is invalid.
+//
+// Lines and states are spliced in place, so an edit costs the replaced lines
+// plus shifting the ones after them, rather than copying and comparing the
+// whole document as SetLines does.
 func (d *Document) ReplaceLines(start, end int, replacement []string) error {
 	if d == nil {
 		return ErrInvalidLineRange
@@ -131,12 +140,66 @@ func (d *Document) ReplaceLines(start, end int, replacement []string) error {
 	if start < 0 || start > end || end > len(d.lines) {
 		return ErrInvalidLineRange
 	}
+	if len(replacement) == end-start && slices.Equal(d.lines[start:end], replacement) {
+		return nil
+	}
+	if d.tail != nil {
+		// An earlier edit has not converged; SetLines semantics settle both.
+		lines := make([]string, 0, len(d.lines)-(end-start)+len(replacement))
+		lines = append(lines, d.lines[:start]...)
+		lines = append(lines, replacement...)
+		lines = append(lines, d.lines[end:]...)
+		d.setLinesLocked(lines)
+		return nil
+	}
 
-	lines := make([]string, 0, len(d.lines)-(end-start)+len(replacement))
-	lines = append(lines, d.lines[:start]...)
-	lines = append(lines, replacement...)
-	lines = append(lines, d.lines[end:]...)
-	d.setLinesLocked(lines)
+	d.lines = slices.Replace(d.lines, start, end, replacement...)
+	d.partialRetries = 0
+	materialized := len(d.stateSrc)
+	keep := min(start, materialized)
+	reusable := materialized >= end
+	if d.partialState > keep {
+		// The old suffix may hold states derived from a time-stopped line.
+		d.partialState = 0
+		reusable = false
+	}
+	if !reusable {
+		d.states = d.states[:keep+1]
+		d.stateSrc = d.stateSrc[:keep]
+		return nil
+	}
+
+	n := len(replacement)
+	if n == 0 {
+		// The line after a deletion starts where the deleted range started.
+		converged := documentStatesEqual(d.states[start], d.states[end])
+		d.states = slices.Delete(d.states, start+1, end+1)
+		d.stateSrc = slices.Delete(d.stateSrc, start, end)
+		if converged || start+1 >= len(d.states) {
+			if !converged {
+				d.states = d.states[:start+1]
+				d.stateSrc = d.stateSrc[:start]
+			}
+			return nil
+		}
+	} else {
+		// states[start+n] is where the first unchanged line now starts; keep its
+		// old state there as the convergence candidate.
+		candidate := d.states[end]
+		d.states = slices.Replace(d.states, start+1, end+1, make([]*StateStack, n)...)
+		d.states[start+n] = candidate
+		d.stateSrc = slices.Replace(d.stateSrc, start, end, make([]string, n)...)
+	}
+	newStart := start + max(n, 1)
+	d.tail = &documentTail{
+		states:   d.states,
+		stateSrc: d.stateSrc,
+		oldStart: newStart,
+		newStart: newStart,
+		inPlace:  true,
+	}
+	d.states = d.states[:start+1]
+	d.stateSrc = d.stateSrc[:start]
 	return nil
 }
 
@@ -161,10 +224,7 @@ func (d *Document) Line(index int) (LineResult, bool) {
 	state := d.stateAtLocked(index)
 	result := d.tokenizeLocked(d.lines[index], state)
 	if len(d.states) == index+1 {
-		d.states = append(d.states, result.RuleStack)
-		d.stateSrc = append(d.stateSrc, d.lines[index])
-		d.noteStateLocked(index, result)
-		d.spliceTailLocked(index + 1)
+		d.appendStateLocked(index, result)
 	} else if !documentStatesEqual(d.states[index+1], result.RuleStack) {
 		d.replaceMaterializedResultLocked(index, result.RuleStack)
 		d.noteStateLocked(index, result)
@@ -238,12 +298,36 @@ func (d *Document) stateAtLocked(index int) *StateStack {
 	for len(d.states) <= index {
 		lineIndex := len(d.states) - 1
 		result := d.tokenizeLocked(d.lines[lineIndex], d.states[lineIndex])
-		d.states = append(d.states, result.RuleStack)
-		d.stateSrc = append(d.stateSrc, d.lines[lineIndex])
-		d.noteStateLocked(lineIndex, result)
-		d.spliceTailLocked(lineIndex + 1)
+		d.appendStateLocked(lineIndex, result)
 	}
 	return d.states[index]
+}
+
+// appendStateLocked records the state after lineIndex, which must be the last
+// materialized line, and reuses the pending tail once states converge.
+func (d *Document) appendStateLocked(lineIndex int, result LineResult) {
+	next := lineIndex + 1
+	tail := d.tail
+	var candidate *StateStack
+	compare := tail != nil && tail.inPlace && next >= tail.newStart && next < len(tail.states)
+	if compare {
+		// The append below overwrites this slot of the shared array.
+		candidate = tail.states[next]
+	}
+	d.states = append(d.states, result.RuleStack)
+	d.stateSrc = append(d.stateSrc, d.lines[lineIndex])
+	d.noteStateLocked(lineIndex, result)
+	switch {
+	case tail == nil:
+	case !tail.inPlace:
+		d.spliceTailLocked(next)
+	case compare && documentStatesEqual(candidate, result.RuleStack):
+		d.states = tail.states
+		d.stateSrc = tail.stateSrc
+		d.tail = nil
+	case next+1 >= len(tail.states):
+		d.tail = nil
+	}
 }
 
 // noteStateLocked records that states[lineIndex+1] came from result.
