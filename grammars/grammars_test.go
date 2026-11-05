@@ -75,6 +75,7 @@ func TestForFilename(t *testing.T) {
 		"source.cc":                "source.cpp",
 		"source.cxx":               "source.cpp",
 		"source.c++":               "source.cpp",
+		"header.h":                 "source.cpp",
 		"header.hh":                "source.cpp",
 		"header.hpp":               "source.cpp",
 		"header.hxx":               "source.cpp",

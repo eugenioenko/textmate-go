@@ -1418,6 +1418,7 @@ var generatedExtensions = map[string]string{
 	"groovy":          "source.groovy",
 	"gs":              "source.vala",
 	"gst":             "source.smalltalk.gnu",
+	"h":               "source.cpp",
 	"h++":             "source.cpp",
 	"handlebars":      "text.html.handlebars",
 	"haskell":         "source.haskell",
