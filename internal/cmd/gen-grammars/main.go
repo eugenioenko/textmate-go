@@ -605,6 +605,7 @@ func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
 		"cc":  {ScopeName: "source.cpp", Priority: 100},
 		"cxx": {ScopeName: "source.cpp", Priority: 100},
 		"c++": {ScopeName: "source.cpp", Priority: 100},
+		"h":   {ScopeName: "source.cpp", Priority: 100},
 		"hh":  {ScopeName: "source.cpp", Priority: 100},
 		"hpp": {ScopeName: "source.cpp", Priority: 100},
 		"hxx": {ScopeName: "source.cpp", Priority: 100},
