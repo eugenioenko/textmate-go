@@ -19,6 +19,9 @@
     { "name": "SQL_2000", "group": "extended", "filename": "query.sql", "fixture": "benchmarks/corpus/query.sql", "lines": 2000, "scopeName": "source.sql" },
     { "name": "YAML_2000", "group": "extended", "filename": "config.yaml", "fixture": "benchmarks/corpus/config.yaml", "lines": 2000, "scopeName": "source.yaml" },
     { "name": "Haskell_2000", "group": "extended", "filename": "module.hs", "fixture": "benchmarks/corpus/module.hs", "lines": 2000, "scopeName": "source.haskell" },
-    { "name": "Vue_2000", "group": "extended", "filename": "component.vue", "fixture": "benchmarks/corpus/component.vue", "lines": 2000, "scopeName": "text.html.vue" }
+    { "name": "Vue_2000", "group": "extended", "filename": "component.vue", "fixture": "benchmarks/corpus/component.vue", "lines": 2000, "scopeName": "text.html.vue" },
+    { "name": "TypeScriptWide_10Fields", "group": "extended", "filename": "wide-10.d.ts", "fixture": "benchmarks/corpus/wide-10.d.ts", "lines": 1, "scopeName": "source.ts" },
+    { "name": "TypeScriptWide_30Fields", "group": "extended", "filename": "wide-30.d.ts", "fixture": "benchmarks/corpus/wide-30.d.ts", "lines": 1, "scopeName": "source.ts" },
+    { "name": "TypeScriptWide_60Fields", "group": "extended", "filename": "wide-60.d.ts", "fixture": "benchmarks/corpus/wide-60.d.ts", "lines": 1, "scopeName": "source.ts" }
   ]
 }
