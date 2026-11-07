@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/dlclark/regexp2 v1.12.0 // indirect
-	github.com/eugenioenko/regexp2/v2 v2.8.2 // indirect
+	github.com/eugenioenko/regexp2/v2 v2.8.3-0.20261107141442-447ef79d4222 // indirect
 )
 
 replace github.com/eugenioenko/textmate-go => ../..

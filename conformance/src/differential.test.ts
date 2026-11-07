@@ -21,6 +21,30 @@ const grammarsDir = path.resolve(
 const tmGrammarsCheckout = path.resolve(grammarsDir, '../..');
 
 describe.skipIf(!enabled)('vscode-textmate differential', () => {
+  test('matches wide nested TypeScript declarations and function properties', { timeout: 30_000 }, async () => {
+    const repository = await GrammarRepository.open(grammarsDir);
+    const session = await repository.createSession('typescript');
+    const fields = Array.from({ length: 60 }, (_, i) =>
+      `'f${i}': { name: 'f${i}'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'String'; ofType: null; } }; }`,
+    ).join('; ');
+    const contents = [
+      'export type Introspection = {',
+      `T: { fields: { ${fields}; }; };`,
+      'handler: Function;',
+      'typed: (value: string) => number;',
+      'generic: <T>(value: T) => T;',
+      '};',
+      'const handler = (value: string) => value;',
+      'const object = { method: function (value: string) { return value; } };',
+    ].join('\n');
+    try {
+      const difference = session.compare(contents);
+      expect(difference, difference && formatDifference(difference)).toBeUndefined();
+    } finally {
+      session.close();
+    }
+  });
+
   test.skipIf(mode !== 'corpus' && mode !== 'all')(
     'matches the checked-in real-file corpus',
     { timeout: 180_000 },
