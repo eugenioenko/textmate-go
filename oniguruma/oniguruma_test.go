@@ -1,6 +1,7 @@
 package oniguruma
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -547,7 +548,9 @@ func TestOrdinaryDotDoesNotMatchNewline(t *testing.T) {
 func TestPerPatternTimeoutIsRecordedAndScanningContinues(t *testing.T) {
 	// regexp2's clock-period test hook is process-global and unsafe to mutate
 	// once another timed match has started its background clock.
-	scanner := NewScanner([]string{`^(a|aa)+$`, `X`}, WithMatchTimeout(time.Millisecond))
+	// The backreference keeps regexp2 from memoizing the loop states, so the
+	// search stays exponential.
+	scanner := NewScanner([]string{`^(a|aa)+\1$`, `X`}, WithMatchTimeout(time.Millisecond))
 	input := NewString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX")
 	match := scanner.FindNextMatch(input, 0, FindOptionNone)
 	if match == nil || match.Index != 1 {
@@ -564,6 +567,39 @@ func TestPerPatternTimeoutIsRecordedAndScanningContinues(t *testing.T) {
 	_ = scanner.FindNextMatch(input, 0, FindOptionNone)
 	if got := len(scanner.Diagnostics()); got != 1 {
 		t.Fatalf("timeout diagnostic count = %d, want deduplicated count 1", got)
+	}
+}
+
+func TestMemoizedLoopAvoidsExponentialBacktracking(t *testing.T) {
+	scanner := NewScanner([]string{`^(a|aa)+$`, `X`}, WithMatchTimeout(time.Second))
+	input := NewString(strings.Repeat("a", 64) + "X")
+	match := scanner.FindNextMatch(input, 0, FindOptionNone)
+	if match == nil || match.Index != 1 {
+		t.Fatalf("match = %+v, want the X pattern", match)
+	}
+	if diagnostics := scanner.Diagnostics(); len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %+v", diagnostics)
+	}
+}
+
+func TestBoundedMissSkipsToNextCandidate(t *testing.T) {
+	var searched []int
+	matchHook = func(*regexp2.Regexp) { searched = append(searched, 0) }
+	t.Cleanup(func() { matchHook = nil })
+	scanner := NewScanner([]string{`;`, `\(`})
+	input := NewString(strings.Repeat("a;", 50) + "(")
+	for start := 0; start < 100; start += 2 {
+		match := scanner.FindNextMatch(input, start, FindOptionNone)
+		if match == nil || match.Index != 0 || match.Captures[0].Start != start+1 {
+			t.Fatalf("from %d: %+v", start, match)
+		}
+	}
+	match := scanner.FindNextMatch(input, 100, FindOptionNone)
+	if match == nil || match.Index != 1 || match.Captures[0].Start != 100 {
+		t.Fatalf("from 100: %+v", match)
+	}
+	if len(searched) > 50+3 {
+		t.Fatalf("%d regexp searches; the bounded \\( miss was repeated", len(searched))
 	}
 }
 

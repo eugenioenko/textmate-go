@@ -58,3 +58,40 @@ func TestTypeScriptWideNestedDeclaration(t *testing.T) {
 		}
 	}
 }
+
+// A function-typed field puts '=' and '=>' on the line, so required-content
+// bounds no longer reject the field-declaration lookahead from earlier fields.
+func TestTypeScriptWideDeclarationWithFunctionField(t *testing.T) {
+	registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
+	t.Cleanup(registry.Dispose)
+	grammar, err := registry.LoadGrammar("source.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fields := range []int{60} {
+		wide := strings.TrimSuffix(wideTypeScriptFields(fields), "}; };") + "cb: (x: number) => void; }; };"
+		doc := textmate.NewDocument(grammar, textmate.DocumentOptions{
+			TokenizeOptions: textmate.TokenizeOptions{TimeLimit: time.Second},
+		})
+		doc.SetLines([]string{"export type introspection_types = {", wide, "};"})
+		result, ok := doc.Line(1)
+		if !ok || result.Stopped {
+			t.Fatalf("%d fields: tokenization incomplete: %v", fields, result.StoppedReason)
+		}
+		line := []rune(wide)
+		functionField := false
+		for _, token := range result.Tokens {
+			if string(line[token.Start:token.End]) != "cb" {
+				continue
+			}
+			for _, scope := range token.Scopes {
+				if strings.HasPrefix(scope, "entity.name.function") {
+					functionField = true
+				}
+			}
+		}
+		if !functionField {
+			t.Fatalf("%d fields: cb was not highlighted as a function", fields)
+		}
+	}
+}

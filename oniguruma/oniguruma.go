@@ -218,6 +218,8 @@ type cachedSearch struct {
 	missInputID uint64
 	missStart   int
 	missEnd     int
+
+	memo *regexp2.SearchMemo
 }
 
 const (
@@ -464,10 +466,18 @@ func (s *OnigScanner) FindNextMatchInto(input *String, start int, opts FindOptio
 				if maxStartExclusive >= 0 && from >= maxStartExclusive {
 					continue
 				}
-				captures, err = s.match(pattern.variants[variant], input.runes, from, maxStartExclusive, cache.captures[:0])
+				if cache.memo == nil {
+					cache.memo = pattern.variants[variant].NewSearchMemo()
+				}
+				captures, err = s.match(pattern.variants[variant], input.runes, from, maxStartExclusive, cache.memo, cache.captures[:0])
 				// A bounded miss only proves that the pattern cannot beat this
-				// call's winner. It may still match later on the same input.
-				if err == nil && (len(captures) != 0 || maxStartExclusive < 0) {
+				// call's winner, unless the memo proved more. It may still match
+				// later on the same input.
+				missEnd := maxStartExclusive
+				if err == nil && len(captures) == 0 && maxStartExclusive >= 0 && cache.memo != nil {
+					missEnd = max(missEnd, cache.memo.NoMatchBefore())
+				}
+				if err == nil && (len(captures) != 0 || maxStartExclusive < 0 || missEnd > len(input.runes)) {
 					cache.inputID = input.id
 					cache.start = start
 					cache.captures = captures
@@ -478,11 +488,11 @@ func (s *OnigScanner) FindNextMatchInto(input *String, start int, opts FindOptio
 						cache.missInputID = input.id
 						cache.missStart = start
 					}
-					cache.missEnd = maxStartExclusive
+					cache.missEnd = missEnd
 				}
 			}
 		} else {
-			captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive, s.captures[:0])
+			captures, err = s.match(pattern.variants[variant], input.runes, start, maxStartExclusive, nil, s.captures[:0])
 			s.captures = captures
 		}
 		if err != nil {
@@ -607,6 +617,7 @@ func (s *OnigScanner) match(
 	regex *regexp2.Regexp,
 	text []rune,
 	start, maxStartExclusive int,
+	memo *regexp2.SearchMemo,
 	dst []Capture,
 ) (captures []Capture, err error) {
 	captures = dst[:0]
@@ -619,12 +630,7 @@ func (s *OnigScanner) match(
 	if matchHook != nil {
 		matchHook(regex)
 	}
-	var indices []regexp2.CaptureIndex
-	if maxStartExclusive < 0 {
-		indices, err = regex.FindRunesCaptureIndicesStartingAt(text, start, s.scratch[:0])
-	} else {
-		indices, err = regex.FindRunesCaptureIndicesStartingAtBefore(text, start, maxStartExclusive, s.scratch[:0])
-	}
+	indices, err := regex.FindRunesCaptureIndicesWithMemo(text, start, maxStartExclusive, memo, s.scratch[:0])
 	if cap(indices) > cap(s.scratch) {
 		s.scratch = indices[:0]
 	}
