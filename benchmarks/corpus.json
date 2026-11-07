@@ -22,6 +22,7 @@
     { "name": "Vue_2000", "group": "extended", "filename": "component.vue", "fixture": "benchmarks/corpus/component.vue", "lines": 2000, "scopeName": "text.html.vue" },
     { "name": "TypeScriptWide_10Fields", "group": "extended", "filename": "wide-10.d.ts", "fixture": "benchmarks/corpus/wide-10.d.ts", "lines": 1, "scopeName": "source.ts" },
     { "name": "TypeScriptWide_30Fields", "group": "extended", "filename": "wide-30.d.ts", "fixture": "benchmarks/corpus/wide-30.d.ts", "lines": 1, "scopeName": "source.ts" },
-    { "name": "TypeScriptWide_60Fields", "group": "extended", "filename": "wide-60.d.ts", "fixture": "benchmarks/corpus/wide-60.d.ts", "lines": 1, "scopeName": "source.ts" }
+    { "name": "TypeScriptWide_60Fields", "group": "extended", "filename": "wide-60.d.ts", "fixture": "benchmarks/corpus/wide-60.d.ts", "lines": 1, "scopeName": "source.ts" },
+    { "name": "TypeScriptWide_60FieldsFunction", "group": "extended", "filename": "wide-60-fn.d.ts", "fixture": "benchmarks/corpus/wide-60-fn.d.ts", "lines": 1, "scopeName": "source.ts" }
   ]
 }
