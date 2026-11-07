@@ -58,25 +58,3 @@ func TestTypeScriptWideNestedDeclaration(t *testing.T) {
 		}
 	}
 }
-
-func BenchmarkTypeScriptWideNestedDeclaration(b *testing.B) {
-	for _, fields := range []int{10, 30, 60} {
-		b.Run(fmt.Sprintf("fields_%d", fields), func(b *testing.B) {
-			registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
-			b.Cleanup(registry.Dispose)
-			grammar, err := registry.LoadGrammar("source.ts")
-			if err != nil {
-				b.Fatal(err)
-			}
-			state := grammar.TokenizeLine("export type introspection_types = {", nil).RuleStack
-			line := wideTypeScriptFields(fields)
-			grammar.TokenizeLine(line, state)
-			b.ReportAllocs()
-			b.SetBytes(int64(len(line)))
-			b.ResetTimer()
-			for range b.N {
-				grammar.TokenizeLine(line, state)
-			}
-		})
-	}
-}
