@@ -68,7 +68,7 @@ func TestTypeScriptWideDeclarationWithFunctionField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, fields := range []int{60} {
+	for _, fields := range []int{60, 240} {
 		wide := strings.TrimSuffix(wideTypeScriptFields(fields), "}; };") + "cb: (x: number) => void; }; };"
 		doc := textmate.NewDocument(grammar, textmate.DocumentOptions{
 			TokenizeOptions: textmate.TokenizeOptions{TimeLimit: time.Second},

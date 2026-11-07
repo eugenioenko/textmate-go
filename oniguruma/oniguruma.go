@@ -20,6 +20,10 @@ const (
 	// real-time scheduling guarantee.
 	DefaultMatchTimeout = 20 * time.Millisecond
 	neverMatch          = `(?!)`
+	// regexp2's default of 100000 slots overflows on lines of about 12K runes
+	// for grammar loops that push several entries per rune. Oniguruma has no
+	// comparable limit, and an overflowing search records nothing in its memo.
+	maxBacktrackingStackSize = 1 << 21
 )
 
 // String is the immutable input wrapper corresponding to OnigString.
@@ -596,7 +600,8 @@ func (p *compiledPattern) compileVariants() error {
 		if compileHook != nil {
 			compileHook(source)
 		}
-		regex, err := regexp2.Compile(source, regexp2.Multiline, regexp2.OptionMaintainCaptureOrder())
+		regex, err := regexp2.Compile(source, regexp2.Multiline, regexp2.OptionMaintainCaptureOrder(),
+			regexp2.OptionMaxBacktrackingStackSize(maxBacktrackingStackSize))
 		if err != nil {
 			return err
 		}
