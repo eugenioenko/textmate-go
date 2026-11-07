@@ -36,8 +36,9 @@ make bench-compare-extended
 ```
 
 The default command runs the 14-case `core` group. The extended command runs
-the complete 23-case corpus: core plus C#, PHP, SQL, YAML, Haskell, Vue, and
-three wide TypeScript declaration cases.
+the complete 24-case corpus: core plus C#, PHP, SQL, YAML, Haskell, Vue, and
+four wide TypeScript declaration cases. One of them ends in a function-typed
+field, which keeps '=' and '=>' on the line.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -89,7 +90,7 @@ and run `go test ./...` in `chroma/`.
 ## Pull-request comparison
 
 On pull requests, CI checks out the exact base and head commits and benchmarks
-all 23 cases with the lightweight harness in [`textmate/`](textmate/). It runs
+all 24 cases with the lightweight harness in [`textmate/`](textmate/). It runs
 only textmate-go, alternating base and head on the same runner; Chroma,
 vscode-textmate, Node tokenization, and Oniguruma are not part of this job.
 Both binaries use the same benchmark source and corpus, with dependencies
