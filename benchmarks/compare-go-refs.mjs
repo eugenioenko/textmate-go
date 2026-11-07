@@ -26,14 +26,28 @@ const escapedNames = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\
 const temporaryDir = fs.mkdtempSync(path.join(os.tmpdir(), 'textmate-go-pr-bench-'));
 const headBinary = path.join(temporaryDir, 'head.test');
 const baseBinary = path.join(temporaryDir, 'base.test');
-const workspace = path.join(temporaryDir, 'base.work');
 
-function compile(binary, environment) {
-  execFileSync('go', ['test', '-c', '-o', binary, '.'], {
+function compile(binary, checkout) {
+  const modfile = `${binary}.mod`;
+  fs.writeFileSync(
+    modfile,
+    'module github.com/eugenioenko/textmate-go/benchmarks/textmate\n\ngo 1.25\n\n' +
+      'require github.com/eugenioenko/textmate-go v0.0.0\n\n' +
+      `replace github.com/eugenioenko/textmate-go => ${JSON.stringify(checkout)}\n`,
+  );
+  const options = {
     cwd: benchmarkDir,
-    env: { ...process.env, CGO_ENABLED: '0', ...environment },
+    env: { ...process.env, CGO_ENABLED: '0', GOWORK: 'off' },
     stdio: ['ignore', 'inherit', 'inherit'],
-  });
+  };
+  // Let each checkout select its own dependencies: the head benchmark module's
+  // indirect requirements would otherwise upgrade the base engine as well.
+  execFileSync('go', ['mod', 'tidy', '-modfile', modfile], options);
+  execFileSync('go', ['test', '-modfile', modfile, '-c', '-o', binary, '.'], options);
+  return execFileSync(
+    'go', ['list', '-modfile', modfile, '-m', '-f', '{{.Version}}', 'github.com/eugenioenko/regexp2/v2'],
+    { ...options, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
+  ).trim();
 }
 
 function run(binary) {
@@ -72,14 +86,9 @@ const percent = (next, previous) => {
 };
 
 try {
-  fs.writeFileSync(
-    workspace,
-    `go 1.25\n\nuse ${JSON.stringify(benchmarkDir)}\n\n` +
-      `replace github.com/eugenioenko/textmate-go => ${JSON.stringify(baseDir)}\n`,
-  );
   console.error('building PR and base benchmark binaries...');
-  compile(headBinary, { GOWORK: 'off' });
-  compile(baseBinary, { GOWORK: workspace });
+  const headRegexpVersion = compile(headBinary, root);
+  const baseRegexpVersion = compile(baseBinary, baseDir);
 
   const head = {};
   const base = {};
@@ -107,6 +116,8 @@ try {
       `Values are the fastest of ${count} alternating passes at ${benchTime} per case.`,
     '',
     `Geometric-mean time change: **${geometricChange >= 0 ? '+' : ''}${geometricChange.toFixed(1)}%**.`,
+    '',
+    `regexp2 dependency: base \`${baseRegexpVersion}\`; PR \`${headRegexpVersion}\`.`,
     '',
     '| Case | Base us/line | PR us/line | Time change | Base allocs/line | PR allocs/line | Allocation change |',
     '| --- | ---: | ---: | ---: | ---: | ---: | ---: |',

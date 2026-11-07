@@ -36,7 +36,8 @@ make bench-compare-extended
 ```
 
 The default command runs the 14-case `core` group. The extended command runs
-the complete 20-case corpus: core plus C#, PHP, SQL, YAML, Haskell, and Vue.
+the complete 23-case corpus: core plus C#, PHP, SQL, YAML, Haskell, Vue, and
+three wide TypeScript declaration cases.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -77,15 +78,22 @@ TSX, HTML, Go, and Markdown reuse the conformance corpus so their numbers stay
 comparable with [`docs/performance-baseline.md`](../docs/performance-baseline.md).
 The other languages use the realistic fixtures in [`corpus/`](corpus/).
 
+`TypeScriptWide_10Fields`, `TypeScriptWide_30Fields`, and
+`TypeScriptWide_60Fields` each contain one complete declaration on a single
+line, with nested fields modeled on issue #17. They expose the cost of
+increasing line width without averaging it across thousands of short lines.
+
 To add a language, drop a fixture in `corpus/`, add an entry to `corpus.json`,
 and run `go test ./...` in `chroma/`.
 
 ## Pull-request comparison
 
 On pull requests, CI checks out the exact base and head commits and benchmarks
-all 20 cases with the lightweight harness in [`textmate/`](textmate/). It runs
+all 23 cases with the lightweight harness in [`textmate/`](textmate/). It runs
 only textmate-go, alternating base and head on the same runner; Chroma,
 vscode-textmate, Node tokenization, and Oniguruma are not part of this job.
+Both binaries use the same benchmark source and corpus, with dependencies
+resolved separately from each checkout's `go.mod`.
 
 The workflow writes the full table to the job summary and to one persistent PR
 comment. Later pushes update that comment instead of adding another. Benchmark
