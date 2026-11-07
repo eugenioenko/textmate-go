@@ -68,10 +68,14 @@ func TestTypeScriptWideDeclarationWithFunctionField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	budget := time.Second
+	if raceEnabled {
+		budget *= 10
+	}
 	for _, fields := range []int{60, 240} {
 		wide := strings.TrimSuffix(wideTypeScriptFields(fields), "}; };") + "cb: (x: number) => void; }; };"
 		doc := textmate.NewDocument(grammar, textmate.DocumentOptions{
-			TokenizeOptions: textmate.TokenizeOptions{TimeLimit: time.Second},
+			TokenizeOptions: textmate.TokenizeOptions{TimeLimit: budget},
 		})
 		doc.SetLines([]string{"export type introspection_types = {", wide, "};"})
 		result, ok := doc.Line(1)
