@@ -168,6 +168,55 @@ func TestGeneratedMetadataIsDeterministicAndKeepsLookupsSeparate(t *testing.T) {
 	}
 }
 
+func TestEmacsLispFallbackAppliesOnlyWhenExcluded(t *testing.T) {
+	commonLisp := grammarMetadata{
+		ID: "common-lisp", DisplayName: "Common Lisp", ScopeName: "source.commonlisp",
+		Aliases: []string{"lisp"}, FileTypes: []string{"lisp"}, Asset: "data/common-lisp.json.gz",
+	}
+	emacsLisp := grammarMetadata{
+		ID: "emacs-lisp", DisplayName: "Emacs Lisp", ScopeName: "source.emacs.lisp",
+		Aliases: []string{"elisp"}, FileTypes: []string{"el", "Cask"}, Asset: "data/emacs-lisp.json.gz",
+	}
+	generate := func(grammars ...grammarMetadata) string {
+		path := filepath.Join(t.TempDir(), "generated.go")
+		if err := writeGeneratedGo(path, "revision", grammars); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Join(strings.Fields(string(data)), " ")
+	}
+
+	excluded := generate(commonLisp)
+	for _, want := range []string{
+		`Aliases: []string{"lisp", "elisp", "emacs-lisp"}`,
+		`"el": "source.commonlisp"`,
+		`"cask": "source.commonlisp"`,
+		`"elisp": "common-lisp"`,
+	} {
+		if !strings.Contains(excluded, want) {
+			t.Errorf("fallback output does not contain %q\n%s", want, excluded)
+		}
+	}
+	if len(commonLisp.Aliases) != 1 {
+		t.Error("fallback mutated the caller's aliases")
+	}
+
+	included := generate(commonLisp, emacsLisp)
+	for _, want := range []string{
+		`Aliases: []string{"lisp"}`,
+		`"el": "source.emacs.lisp"`,
+		`"cask": "source.emacs.lisp"`,
+		`"elisp": "emacs-lisp"`,
+	} {
+		if !strings.Contains(included, want) {
+			t.Errorf("output with Emacs Lisp selected does not contain %q\n%s", want, included)
+		}
+	}
+}
+
 type fixtureGrammar struct {
 	id              string
 	displayName     string

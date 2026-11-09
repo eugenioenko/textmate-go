@@ -1,4 +1,4 @@
-# 124 grammar roots plus the html-derivative support grammar.
+# 123 grammar roots plus the html-derivative support grammar.
 # Keep this list sorted.
 actionscript-3
 ahk
@@ -31,7 +31,6 @@ docker
 dotenv
 elixir
 elm
-emacs-lisp
 erlang
 fennel
 fish

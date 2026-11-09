@@ -81,7 +81,6 @@
     { "file": "samples/dotenv.sample", "source": "tm-grammars", "grammar": "dotenv", "features": ["upstream real-world syntax sample"] },
     { "file": "samples/elixir.sample", "source": "tm-grammars", "grammar": "elixir", "features": ["upstream real-world syntax sample"] },
     { "file": "samples/elm.sample", "source": "tm-grammars", "grammar": "elm", "features": ["upstream real-world syntax sample"] },
-    { "file": "samples/emacs-lisp.sample", "source": "tm-grammars", "grammar": "emacs-lisp", "features": ["upstream real-world syntax sample"] },
     { "file": "samples/erlang.sample", "source": "tm-grammars", "grammar": "erlang", "features": ["upstream real-world syntax sample"] },
     { "file": "samples/fennel.sample", "source": "tm-grammars", "grammar": "fennel", "features": ["upstream real-world syntax sample"] },
     { "file": "samples/fish.sample", "source": "tm-grammars", "grammar": "fish", "features": ["upstream real-world syntax sample"] },

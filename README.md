@@ -7,7 +7,7 @@ incremental document highlighting without CGO.
 
 - Exact token-text and scope-stack parity is continuously checked against
   vscode-textmate.
-- The optional `grammars` package provides 124 bundled languages.
+- The optional `grammars` package provides 123 bundled languages.
 - Immutable states and interned scope stacks support efficient editor caches.
 - Size and time limits bound work on untrusted or minified input.
 - Go 1.25 or newer is required. `CGO_ENABLED=0` is supported.
@@ -67,7 +67,7 @@ interned scope stacks, token categories, and tokenization limits.
 
 ## Embedded grammars
 
-The optional `grammars` package embeds 124 license-reviewed grammar roots plus
+The optional `grammars` package embeds 123 license-reviewed grammar roots plus
 one MIT support grammar used for Markdown's inline HTML. Assets are individually
 compressed and loaded once on demand.
 
@@ -75,7 +75,7 @@ compressed and loaded once on demand.
   Batch File, BibTeX, Bicep, C, C3, Chapel, Clojure, CMake, COBOL,
   CoffeeScript, Common Lisp, Rocq, C++, Crystal, C#, CSS, CSV, D, Dart,
   Desktop, Diff, Dockerfile, and dotEnv.
-- **E-H:** Elixir, Elm, Emacs Lisp, Erlang, Fennel, Fish, F#, GDScript,
+- **E-H:** Elixir, Elm, Erlang, Fennel, Fish, F#, GDScript,
   Gherkin, Gleam, Go, GraphQL, Groovy, Handlebars, Haskell, Haxe, HashiCorp
   HCL, HLSL, HTML, HTTP, and Hy.
 - **I-M:** INI, Java, JavaScript, Jinja, JSON, JSON with Comments, Jsonnet,
@@ -123,7 +123,7 @@ manual dispatches. A green required check covers:
   edit, splice, and UTF-8 fuzz cases;
 - upstream theme tests, 72 theme scope differentials, and 72 isolated golden
   fixtures across 14 themes;
-- standalone tokenization of all 166 embedded roots, plus parsing and loading
+- standalone tokenization of all 165 embedded roots, plus parsing and loading
   all 260 pinned source grammars and scanning their 34,698 regex fields;
 - base-versus-PR performance results for all 20 benchmark cases, posted as one
   updated PR comment.
