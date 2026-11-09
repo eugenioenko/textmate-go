@@ -32,8 +32,8 @@ func TestLoad(t *testing.T) {
 
 func TestLoadAllConcurrently(t *testing.T) {
 	scopes := Scopes()
-	if len(scopes) != 125 {
-		t.Fatalf("len(Scopes()) = %d, want 125", len(scopes))
+	if len(scopes) != 124 {
+		t.Fatalf("len(Scopes()) = %d, want 124", len(scopes))
 	}
 	var wait sync.WaitGroup
 	for _, scopeName := range scopes {
@@ -80,6 +80,9 @@ func TestForFilename(t *testing.T) {
 		"header.hpp":               "source.cpp",
 		"header.hxx":               "source.cpp",
 		"header.h++":               "source.cpp",
+		"init.el":                  "source.commonlisp",
+		"project/Cask":             "source.commonlisp",
+		".emacs":                   "source.commonlisp",
 		"unknown.extension-absent": "",
 	}
 	for filename, want := range tests {
@@ -150,6 +153,17 @@ func TestGrammarInfoLookups(t *testing.T) {
 	}
 	if want := []string{"graphql", "graphqls", "gql", "graphcool"}; !reflect.DeepEqual(graphql.FileTypes, want) {
 		t.Fatalf("GraphQL file types = %v, want %v", graphql.FileTypes, want)
+	}
+}
+
+func TestEmacsLispFallsBackToCommonLisp(t *testing.T) {
+	if _, ok := InfoForScope("source.emacs.lisp"); ok {
+		t.Fatal("Emacs Lisp is embedded")
+	}
+	for _, alias := range []string{"elisp", "emacs-lisp"} {
+		if info, ok := InfoForAlias(alias); !ok || info.ID != "common-lisp" {
+			t.Errorf("InfoForAlias(%q) = (%#v, %v), want common-lisp", alias, info, ok)
+		}
 	}
 }
 

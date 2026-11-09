@@ -615,6 +615,9 @@ func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
 	available := make(map[string]bool, len(grammars))
 	for _, grammar := range grammars {
 		available[grammar.ScopeName] = true
+	}
+	grammars = applyFallbacks(grammars, available, reviewedExtensions, filenames)
+	for _, grammar := range grammars {
 		addCandidate(extensions, grammar.ID, grammar.ScopeName, 20)
 		for _, alias := range grammar.Aliases {
 			addCandidate(extensions, strings.ToLower(alias), grammar.ScopeName, 25)
@@ -703,6 +706,50 @@ func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
 		return err
 	}
 	return os.WriteFile(path, formatted, 0o644)
+}
+
+// grammarFallback routes a language whose grammar is deliberately left out of
+// a selection to a related embedded grammar. It applies only while Missing is
+// absent, so a selection that includes Missing keeps its own mapping.
+type grammarFallback struct {
+	Missing    string
+	Fallback   string
+	Aliases    []string
+	Extensions []string
+	Filenames  []string
+}
+
+// Emacs Lisp is excluded from the curated set because its library-name
+// regexes make up about a quarter of the curated grammar data.
+var grammarFallbacks = []grammarFallback{
+	{
+		Missing:    "source.emacs.lisp",
+		Fallback:   "source.commonlisp",
+		Aliases:    []string{"elisp", "emacs-lisp"},
+		Extensions: []string{"el", "eld", "emacs", "_emacs", "spacemacs", "abbrev_defs", "gnus", "viper"},
+		Filenames:  []string{"cask", "eask", "easkfile", "emacs.desktop", "project.ede"},
+	},
+}
+
+func applyFallbacks(grammars []grammarMetadata, available map[string]bool, extensions, filenames map[string]candidate) []grammarMetadata {
+	for _, fallback := range grammarFallbacks {
+		if available[fallback.Missing] || !available[fallback.Fallback] {
+			continue
+		}
+		for index := range grammars {
+			if grammars[index].ScopeName == fallback.Fallback {
+				grammars[index].Aliases = append(append([]string(nil), grammars[index].Aliases...), fallback.Aliases...)
+			}
+		}
+		for _, key := range fallback.Extensions {
+			extensions[key] = candidate{ScopeName: fallback.Fallback, Priority: 100}
+		}
+		for _, key := range fallback.Filenames {
+			filenames[key] = candidate{ScopeName: fallback.Fallback, Priority: 100}
+			extensions[key] = candidate{ScopeName: fallback.Fallback, Priority: 100}
+		}
+	}
+	return grammars
 }
 
 func writeStringSliceField(buffer *bytes.Buffer, name string, values []string) {

@@ -55,8 +55,8 @@ func TestEmbeddedCorpus(t *testing.T) {
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if len(manifest.Files) != 166 {
-		t.Fatalf("corpus entries = %d, want 166", len(manifest.Files))
+	if len(manifest.Files) != 165 {
+		t.Fatalf("corpus entries = %d, want 165", len(manifest.Files))
 	}
 	sourceGrammars := loadSourceGrammars(t, filepath.Join(packageRoot, "grammars"))
 

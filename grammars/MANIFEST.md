@@ -33,7 +33,6 @@
 | `dotenv` | `source.dotenv` | MIT | [dotenv](https://github.com/dotenv-org/dotenv-vscode/blob/3b4caf3398b3958b5fef8ef723c332eb1f30dfbb/syntaxes/dotenv.tmLanguage.json) (`3b4caf3398b3958b5fef8ef723c332eb1f30dfbb`) |
 | `elixir` | `source.elixir` | Apache-2.0 | [elixir](https://github.com/elixir-editors/elixir-tmbundle/blob/43c8cd957d5ac6e1abbd8730fc7a08c81a6e76c9/Syntaxes/Elixir.tmLanguage) (`43c8cd957d5ac6e1abbd8730fc7a08c81a6e76c9`) |
 | `elm` | `source.elm` | MIT | [elm](https://github.com/elm-tooling/elm-language-client-vscode/blob/c70351314682c2e0fae8a402ebb301da79821c37/syntaxes/elm-syntax.json) (`c70351314682c2e0fae8a402ebb301da79821c37`) |
-| `emacs-lisp` | `source.emacs.lisp` | ISC | [emacs-lisp](https://github.com/Alhadis/language-emacs-lisp/blob/b38b69f684e7750b35f370fe567e7d9431f5fbc8/grammars/emacs-lisp.cson) (`b38b69f684e7750b35f370fe567e7d9431f5fbc8`) |
 | `erlang` | `source.erlang` | Apache-2.0 | [erlang](https://github.com/erlang-ls/grammar/blob/fe898becd3004bcb4947ab50d6b6b830fbfb9228/Erlang.plist) (`fe898becd3004bcb4947ab50d6b6b830fbfb9228`) |
 | `fennel` | `source.fnl` | MIT | [fennel](https://github.com/kongeor/vsc-fennel/blob/664148923d7bd72531120d0cba712c6dba6f698d/syntaxes/fennel.tmLanguage.json) (`664148923d7bd72531120d0cba712c6dba6f698d`) |
 | `fish` | `source.fish` | MIT | [fish](https://github.com/bmalehorn/vscode-fish/blob/8288b88c46ebe1ef2876fd4275450fc80c5a176a/syntaxes/fish.tmLanguage.json) (`8288b88c46ebe1ef2876fd4275450fc80c5a176a`) |
