@@ -20,6 +20,8 @@ const corpus: Array<CorpusEntry & { contents: string }> = [
 ];
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const embeddedSupportGrammars = new Set(['html-derivative']);
+// The pinned upstream has no git-commit sample, so require our local fixture.
+const localGrammarSamples = new Map([['git-commit', 'git/COMMIT_EDITMSG']]);
 
 describe('differential infrastructure', () => {
   test('seeded generation is reproducible and remains valid UTF-8', () => {
@@ -63,8 +65,17 @@ describe('differential infrastructure', () => {
     expect(roots.filter((grammar) => !covered.has(grammar))).toEqual([]);
 
     const upstreamSamples = manifest.files.filter((entry) => entry.source === 'tm-grammars');
-    expect(upstreamSamples).toHaveLength(roots.length);
-    expect(new Set(upstreamSamples.map((entry) => entry.file)).size).toBe(roots.length);
-    expect(upstreamSamples.map((entry) => entry.grammar).sort()).toEqual(roots.sort());
+    const upstreamRoots = roots.filter((grammar) => !localGrammarSamples.has(grammar));
+    expect(upstreamSamples).toHaveLength(upstreamRoots.length);
+    expect(new Set(upstreamSamples.map((entry) => entry.file)).size).toBe(upstreamRoots.length);
+    expect(upstreamSamples.map((entry) => entry.grammar).sort()).toEqual(upstreamRoots.sort());
+
+    for (const [grammar, file] of localGrammarSamples) {
+      expect(roots).toContain(grammar);
+      const entries = manifest.files.filter((entry) => entry.grammar === grammar && !entry.source);
+      expect(entries.map((entry) => entry.file)).toContain(file);
+      const contents = fs.readFileSync(path.join(repositoryRoot, 'conformance/corpus', file), 'utf8');
+      expect(contents.trim()).not.toBe('');
+    }
   });
 });
