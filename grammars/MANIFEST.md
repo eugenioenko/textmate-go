@@ -39,6 +39,7 @@
 | `fsharp` | `source.fsharp` | MIT | [fsharp](https://github.com/microsoft/vscode/blob/e6cffb21362b6d7addb977ff7db14f0681228780/extensions/fsharp/syntaxes/fsharp.tmLanguage.json) (`e6cffb21362b6d7addb977ff7db14f0681228780`) |
 | `gdscript` | `source.gdscript` | MIT | [gdscript](https://github.com/godotengine/godot-vscode-plugin/blob/3f2860fd76c591a6010f0d35220490933e41d01d/syntaxes/GDScript.tmLanguage.json) (`3f2860fd76c591a6010f0d35220490933e41d01d`) |
 | `gherkin` | `text.gherkin.feature` | MIT | [gherkin](https://github.com/alexkrechik/VSCucumberAutoComplete/blob/fbb554addf81e8961b58b1577924af10fecf9694/syntaxes/feature.tmLanguage.json) (`fbb554addf81e8961b58b1577924af10fecf9694`) |
+| `git-commit` | `text.git-commit` | MIT | [git-commit](https://github.com/microsoft/vscode/blob/f8c3f89468fea14103d8790d59ea8594d6e644eb/extensions/git-base/syntaxes/git-commit.tmLanguage.json) (`f8c3f89468fea14103d8790d59ea8594d6e644eb`) |
 | `gleam` | `source.gleam` | Apache-2.0 | [gleam](https://github.com/gleam-lang/vscode-gleam/blob/aa487ed82aeaec8dbac62e796689daf55abf1aa9/syntaxes/gleam.tmLanguage.json) (`aa487ed82aeaec8dbac62e796689daf55abf1aa9`) |
 | `go` | `source.go` | MIT | [go](https://github.com/microsoft/vscode/blob/091ef378baaa141c8bc4bbe9775d4cb3bd655a80/extensions/go/syntaxes/go.tmLanguage.json) (`091ef378baaa141c8bc4bbe9775d4cb3bd655a80`) |
 | `graphql` | `source.graphql` | MIT | [graphql](https://github.com/prisma-labs/vscode-graphql/blob/4569aef2364b42b6acd8188e4a6ca9b0ba3c6a1d/grammars/graphql.json) (`4569aef2364b42b6acd8188e4a6ca9b0ba3c6a1d`) |

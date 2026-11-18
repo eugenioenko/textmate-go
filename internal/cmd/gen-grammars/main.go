@@ -590,13 +590,15 @@ func writeGeneratedGo(path, revision string, grammars []grammarMetadata) error {
 
 	extensions := make(map[string]candidate)
 	filenames := map[string]candidate{
-		"dockerfile":    {ScopeName: "source.dockerfile", Priority: 100},
-		"containerfile": {ScopeName: "source.dockerfile", Priority: 100},
-		"makefile":      {ScopeName: "source.makefile", Priority: 100},
-		"gnumakefile":   {ScopeName: "source.makefile", Priority: 100},
-		".bashrc":       {ScopeName: "source.shell", Priority: 100},
-		".zshrc":        {ScopeName: "source.shell", Priority: 100},
-		".profile":      {ScopeName: "source.shell", Priority: 100},
+		"commit_editmsg": {ScopeName: "text.git-commit", Priority: 100},
+		"merge_msg":      {ScopeName: "text.git-commit", Priority: 100},
+		"dockerfile":     {ScopeName: "source.dockerfile", Priority: 100},
+		"containerfile":  {ScopeName: "source.dockerfile", Priority: 100},
+		"makefile":       {ScopeName: "source.makefile", Priority: 100},
+		"gnumakefile":    {ScopeName: "source.makefile", Priority: 100},
+		".bashrc":        {ScopeName: "source.shell", Priority: 100},
+		".zshrc":         {ScopeName: "source.shell", Priority: 100},
+		".profile":       {ScopeName: "source.shell", Priority: 100},
 	}
 	reviewedExtensions := map[string]candidate{
 		"m":   {ScopeName: "source.objc", Priority: 100},
