@@ -2,6 +2,7 @@ package grammars
 
 import (
 	"reflect"
+	"slices"
 	"sort"
 	"sync"
 	"testing"
@@ -32,8 +33,8 @@ func TestLoad(t *testing.T) {
 
 func TestLoadAllConcurrently(t *testing.T) {
 	scopes := Scopes()
-	if len(scopes) != 124 {
-		t.Fatalf("len(Scopes()) = %d, want 124", len(scopes))
+	if len(scopes) != 125 {
+		t.Fatalf("len(Scopes()) = %d, want 125", len(scopes))
 	}
 	var wait sync.WaitGroup
 	for _, scopeName := range scopes {
@@ -69,6 +70,9 @@ func TestForFilename(t *testing.T) {
 		"config/.bashrc":           "source.shell",
 		"settings.jsonc":           "source.json.comments",
 		"project/.env":             "source.dotenv",
+		"COMMIT_EDITMSG":           "text.git-commit",
+		"repo/.git/COMMIT_EDITMSG": "text.git-commit",
+		"repo/.git/MERGE_MSG":      "text.git-commit",
 		"main.m":                   "source.objc",
 		"main.mm":                  "source.objcpp",
 		"script.pl":                "source.perl",
@@ -112,6 +116,53 @@ func TestRegistryIntegration(t *testing.T) {
 	result := grammar.TokenizeLine("package main", textmate.InitialState)
 	if len(result.Tokens) == 0 {
 		t.Fatal("embedded Go grammar returned no tokens")
+	}
+}
+
+func TestGitCommitGrammar(t *testing.T) {
+	info, ok := InfoForID("git-commit")
+	if !ok || info.ScopeName != "text.git-commit" || info.DisplayName != "Git Commit Message" {
+		t.Fatalf("git-commit metadata = %#v, found=%t", info, ok)
+	}
+	registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: Load})
+	defer registry.Dispose()
+	grammar, err := registry.LoadGrammar(info.ScopeName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := textmate.InitialState
+	for _, tc := range []struct {
+		line, scope string
+	}{
+		{"feat: highlight commit messages", "meta.scope.subject.git-commit"},
+		{"", ""},
+		{"Explain the change.", "meta.scope.message.git-commit"},
+		{"# Please enter the commit message.", "comment.line.number-sign.git-commit"},
+		{"#\tmodified:   main.go", "markup.changed.git-commit"},
+		{"#\tnew file:   helper.go", "markup.inserted.git-commit"},
+		{"#\tdeleted:    old.go", "markup.deleted.git-commit"},
+		{"diff --git a/main.go b/main.go", "source.diff"},
+		{"--- a/main.go", "source.diff"},
+		{"+++ b/main.go", "source.diff"},
+		{"@@ -1 +1 @@", "source.diff"},
+		{"-old", "markup.deleted.diff"},
+		{"+new", "markup.inserted.diff"},
+	} {
+		result := grammar.TokenizeLine(tc.line, state)
+		state = result.RuleStack
+		if tc.scope == "" {
+			continue
+		}
+		found := false
+		for _, token := range result.Tokens {
+			if slices.Contains(token.Scopes, tc.scope) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("line %q missing scope %q: %#v", tc.line, tc.scope, result.Tokens)
+		}
 	}
 }
 

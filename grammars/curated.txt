@@ -1,4 +1,4 @@
-# 123 grammar roots plus the html-derivative support grammar.
+# 124 grammar roots plus the html-derivative support grammar.
 # Keep this list sorted.
 actionscript-3
 ahk
@@ -37,6 +37,7 @@ fish
 fsharp
 gdscript
 gherkin
+git-commit
 gleam
 go
 graphql

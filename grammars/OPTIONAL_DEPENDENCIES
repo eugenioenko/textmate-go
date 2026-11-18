@@ -31,7 +31,6 @@ source.typst -> source.agda
 source.typst -> source.js.regexp
 source.typst -> source.perl.6
 source.typst -> source.regexp.python
-source.typst -> text.git-commit
 source.typst -> text.git-rebase
 source.typst -> text.log
 source.typst -> text.pug
@@ -46,7 +45,6 @@ text.html.markdown -> source.perl.6
 text.html.markdown -> source.regexp.python
 text.html.markdown -> source.twig
 text.html.markdown -> source.yang
-text.html.markdown -> text.git-commit
 text.html.markdown -> text.git-rebase
 text.html.markdown -> text.log
 text.html.markdown -> text.pug

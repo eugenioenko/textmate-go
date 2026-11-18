@@ -1,10 +1,15 @@
 # Embedded grammars
 
-This package embeds 123 TextMate grammar roots plus the small MIT
+This package embeds 124 TextMate grammar roots plus the small MIT
 `html-derivative` support grammar required for Markdown inline HTML, all as
 individually compressed JSON assets. `Load` decompresses and parses a grammar
 only on first use, then caches the result. `ForFilename` maps conventional
 filenames and extensions to the root scopes.
+
+Git commit messages use the dedicated `git-commit` grammar (`text.git-commit`).
+`COMMIT_EDITMSG` and `MERGE_MSG` resolve by filename; the grammar handles Git
+comments and file statuses and includes the bundled `source.diff` grammar for
+verbose commit diffs.
 
 `Infos` exposes the pinned catalog metadata for the embedded set: each
 grammar's canonical language ID, display name, scope, aliases, and declared
@@ -53,7 +58,7 @@ current curated totals.
 
 | Pinned set | Grammars | Compacted JSON | Per-file gzip | Stripped probe binary |
 | --- | ---: | ---: | ---: | ---: |
-| Curated | 124 | 3,860,115 B | 587,615 B | 3,010,708 B |
+| Curated | 125 | 3,861,204 B | 588,052 B | 3,010,708 B |
 | Original 40 | 41 | 2,485,124 B | 331,365 B | 2,740,372 B |
 | All | 260 | 7,654,872 B | 1,318,324 B | 3,752,084 B |
 
@@ -63,8 +68,8 @@ tracked `cmd/grammar-size-probe`, built with
 ./cmd/grammar-size-probe`. The current curated figure is directly reproducible;
 the all-260 figure is the Phase 4 measurement made with the same minimal API
 calls before the fail-closed generator prohibited staging unreviewed licenses.
-Extending the original 40 to 123 roots adds 256,250 compressed-data bytes and
-270,336 binary bytes; the all-260 set would add another 730,709 and 741,376 and
+Extending the original 40 to 124 roots adds 256,687 compressed-data bytes and
+270,336 binary bytes; the all-260 set would add another 730,272 and 741,376 and
 carries unresolved license metadata, so the curated set is the production
 default.
 
@@ -81,9 +86,9 @@ Ruby template variants. The registry deliberately treats an unavailable
 external include as non-fatal. The exact sorted set is checked in at
 `OPTIONAL_DEPENDENCIES` and guarded by a test, so adding or removing an
 upstream dependency cannot silently change the standalone package. The opt-in
-`TestEmbeddedCorpus` gate tokenizes the 42 focused regression files and the
-pinned upstream sample of every embedded grammar, 165 files in all, using only
-`grammars.Load`, and checks each against the complete source repository. The
+`TestEmbeddedCorpus` gate tokenizes 43 focused regression files and 123
+pinned upstream samples, 166 files in all, using only `grammars.Load`, and checks
+each against the complete source repository. The
 same corpus drives the vscode-textmate differential test. CI enables the gate
 with `TEXTMATE_GO_REQUIRE_EMBEDDED_CORPUS=1`.
 

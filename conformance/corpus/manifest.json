@@ -8,6 +8,7 @@
     }
   },
   "files": [
+    { "file": "git/COMMIT_EDITMSG", "grammar": "git-commit", "features": ["subject", "body", "Git comments", "file status metadata", "embedded diff"] },
     { "file": "web/multiline.html", "grammar": "html", "features": ["multiline attributes", "embedded CSS", "embedded JavaScript", "block comment", "template literal"] },
     { "file": "web/component.tsx", "grammar": "tsx", "features": ["multiline attributes", "JSX expression", "block comment", "template literal"] },
     { "file": "web/module.js", "grammar": "javascript", "features": ["block comment", "template literal"] },
