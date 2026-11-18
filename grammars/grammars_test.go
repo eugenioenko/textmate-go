@@ -121,7 +121,7 @@ func TestRegistryIntegration(t *testing.T) {
 
 func TestGitCommitGrammar(t *testing.T) {
 	info, ok := InfoForID("git-commit")
-	if !ok || info.ScopeName != "text.git-commit" || info.DisplayName != "Git Commit Message" {
+	if !ok || info.ScopeName != "text.git-commit" || info.DisplayName != "Git Commit" {
 		t.Fatalf("git-commit metadata = %#v, found=%t", info, ok)
 	}
 	registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: Load})

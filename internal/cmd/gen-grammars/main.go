@@ -157,6 +157,9 @@ func prepareGeneration(root, revision, selection string, reviews map[string]lice
 		if source.DisplayName == "" {
 			return nil, fmt.Errorf("grammar %q metadata has no displayName", id)
 		}
+		if id == "git-commit" {
+			source.DisplayName = "Git Commit"
+		}
 		if review, ok := reviews[id]; ok {
 			if source.License != "" && source.License != "NOASSERTION" {
 				return nil, fmt.Errorf("grammar %q has a license review but metadata states %q", id, source.License)
