@@ -224,7 +224,7 @@ var generatedGrammarInfos = []GrammarInfo{
 	},
 	{
 		ID:          "git-commit",
-		DisplayName: "Git Commit Message",
+		DisplayName: "Git Commit",
 		ScopeName:   "text.git-commit",
 	},
 	{

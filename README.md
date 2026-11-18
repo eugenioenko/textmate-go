@@ -76,7 +76,7 @@ compressed and loaded once on demand.
   CoffeeScript, Common Lisp, Rocq, C++, Crystal, C#, CSS, CSV, D, Dart,
   Desktop, Diff, Dockerfile, and dotEnv.
 - **E-H:** Elixir, Elm, Erlang, Fennel, Fish, F#, GDScript,
-  Gherkin, Git Commit Message, Gleam, Go, GraphQL, Groovy, Handlebars, Haskell,
+  Gherkin, Git Commit, Gleam, Go, GraphQL, Groovy, Handlebars, Haskell,
   Haxe, HashiCorp HCL, HLSL, HTML, HTTP, and Hy.
 - **I-M:** INI, Java, JavaScript, Jinja, JSON, JSON with Comments, Jsonnet,
   JSX, Julia, KDL, Kotlin, Lean 4, Less, Lua, Makefile, Markdown, Mojo, and
