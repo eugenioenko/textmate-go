@@ -157,6 +157,9 @@ func (s *server) newRegistry(req request) (response, error) {
 		GetInjections: func(scopeName string) []string {
 			return append([]string(nil), injections[scopeName]...)
 		},
+		HasGrammar: func(scopeName string) bool {
+			return grammars[scopeName] != nil
+		},
 	})
 
 	handle := s.newHandle("r")

@@ -178,6 +178,12 @@ func ScopeForFilename(name string) string {
 	}
 }
 
+// Has reports whether Load can provide scopeName, without loading it.
+func Has(scopeName string) bool {
+	_, ok := generatedAssets[scopeName]
+	return ok
+}
+
 // Scopes returns the sorted scope names available to Load.
 func Scopes() []string {
 	return append([]string(nil), generatedScopeNames...)

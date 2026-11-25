@@ -639,6 +639,9 @@ func (f *RuleFactory) compilePatterns(
 					found = true
 				}
 			case topLevelReference:
+				if id, found = f.deferredIncludeRuleID(pattern, reference.scopeName, helper, repository); found {
+					break
+				}
 				if external := helper.getExternalGrammar(reference.scopeName, repository); external != nil {
 					if included := external.Repository["$self"]; included != nil {
 						id = f.getCompiledRuleID(included, helper, external.Repository)
@@ -646,6 +649,9 @@ func (f *RuleFactory) compilePatterns(
 					}
 				}
 			case topLevelRepositoryReference:
+				if id, found = f.deferredIncludeRuleID(pattern, reference.scopeName, helper, repository); found {
+					break
+				}
 				if external := helper.getExternalGrammar(reference.scopeName, repository); external != nil {
 					if included := external.Repository[reference.ruleName]; included != nil {
 						id = f.getCompiledRuleID(included, helper, external.Repository)
@@ -672,6 +678,73 @@ func (f *RuleFactory) compilePatterns(
 		patterns:           result,
 		hasMissingPatterns: len(patterns) != len(result),
 	}
+}
+
+// deferredIncludeRuleID returns a placeholder for an include of a grammar that
+// can be loaded when tokenizing first reaches it.
+func (f *RuleFactory) deferredIncludeRuleID(
+	include *RawRule,
+	scopeName string,
+	helper ruleFactoryHelper,
+	repository RawRepository,
+) (ruleID, bool) {
+	deferrer, ok := helper.(interface {
+		deferExternal(string, RawRepository) bool
+	})
+	if !ok || !deferrer.deferExternal(scopeName, repository) {
+		return 0, false
+	}
+	return helper.registerRule(func(id ruleID) rule {
+		return &externalIncludeRule{
+			includeOnlyRule: includeOnlyRule{baseRule: newBaseRule(include.Location, id, nil, nil)},
+			include:         include,
+			scopeName:       scopeName,
+			factory:         f,
+			helper:          helper,
+			repository:      repository,
+		}
+	}).getID(), true
+}
+
+// externalIncludeRule stands in for an include of a grammar that is not loaded
+// yet. Patterns are collected only when tokenizing enters the enclosing rule,
+// so the grammar is loaded and compiled then.
+type externalIncludeRule struct {
+	includeOnlyRule
+	include    *RawRule
+	scopeName  string
+	factory    *RuleFactory
+	helper     ruleFactoryHelper
+	repository RawRepository
+}
+
+func (r *externalIncludeRule) resolve() {
+	helper := r.helper
+	if helper == nil {
+		return
+	}
+	r.helper = nil
+	helper.getExternalGrammar(r.scopeName, r.repository)
+	r.patterns = r.factory.compilePatterns([]*RawRule{r.include}, helper, r.repository).patterns
+}
+
+func (r *externalIncludeRule) collectPatterns(grammar ruleRegistry, out *regexpSourceList) {
+	r.resolve()
+	r.includeOnlyRule.collectPatterns(grammar, out)
+}
+
+func (r *externalIncludeRule) compile(grammar ruleRegistry, endRegexSource *string) *compiledRule {
+	r.resolve()
+	return r.includeOnlyRule.compile(grammar, endRegexSource)
+}
+
+func (r *externalIncludeRule) compileAG(
+	grammar ruleRegistry,
+	endRegexSource *string,
+	allowA, allowG bool,
+) *compiledRule {
+	r.resolve()
+	return r.includeOnlyRule.compileAG(grammar, endRegexSource, allowA, allowG)
 }
 
 func ruleShouldBePruned(compiled rule) bool {
