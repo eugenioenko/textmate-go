@@ -51,6 +51,7 @@ type Grammar struct {
 	rules         []rule
 
 	includedGrammars map[string]*RawGrammar
+	deferredBases    map[string]*RawRule
 	repository       grammarRepository
 	raw              *RawGrammar
 	ruleFactory      *RuleFactory
@@ -302,9 +303,36 @@ func (g *Grammar) getExternalGrammar(
 	if repository != nil {
 		base = repository["$base"]
 	}
+	if deferred, ok := g.deferredBases[scopeName]; ok {
+		base = deferred
+	}
 	included := initGrammar(raw, base)
 	g.includedGrammars[scopeName] = included
 	return included
+}
+
+// deferExternal reports whether an include of scopeName can wait until
+// tokenizing reaches it, recording the base context getExternalGrammar would
+// have used had it been requested now.
+func (g *Grammar) deferExternal(scopeName string, repository RawRepository) bool {
+	if g.includedGrammars[scopeName] != nil {
+		return false
+	}
+	deferrer, ok := g.repository.(interface{ deferExternal(string) bool })
+	if !ok || !deferrer.deferExternal(scopeName) {
+		return false
+	}
+	if _, ok := g.deferredBases[scopeName]; !ok {
+		if g.deferredBases == nil {
+			g.deferredBases = make(map[string]*RawRule)
+		}
+		var base *RawRule
+		if repository != nil {
+			base = repository["$base"]
+		}
+		g.deferredBases[scopeName] = base
+	}
+	return true
 }
 
 func (g *Grammar) scopeAttributes(string) uint32 { return 0 }

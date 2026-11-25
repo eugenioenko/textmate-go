@@ -259,3 +259,46 @@ func TestRegistryDisposeDuringInflightLoadReleasesWaiters(t *testing.T) {
 		t.Fatal("in-flight load did not finish after Dispose")
 	}
 }
+
+func TestRegistryHasGrammarDefersIncludesUntilTokenizingReachesThem(t *testing.T) {
+	str := func(value string) *string { return &value }
+	grammars := map[string]*RawGrammar{
+		"source.root": {
+			ScopeName: "source.root",
+			Patterns: []*RawRule{
+				{Begin: str("^```js$"), End: str("^```$"), Patterns: []*RawRule{registryIncludeRule("source.js")}},
+				{Begin: str("^```css$"), End: str("^```$"), Patterns: []*RawRule{registryIncludeRule("source.css")}},
+			},
+		},
+		"source.js": {
+			ScopeName: "source.js",
+			Patterns:  []*RawRule{{Match: str(`\bvar\b`), Name: str("keyword.js")}},
+		},
+		"source.css": {ScopeName: "source.css"},
+	}
+	var loaded []string
+	registry := NewRegistry(RegistryOptions{
+		LoadGrammar: func(scopeName string) (*RawGrammar, error) {
+			loaded = append(loaded, scopeName)
+			return grammars[scopeName], nil
+		},
+		HasGrammar: func(scopeName string) bool { return grammars[scopeName] != nil },
+	})
+	grammar, err := registry.LoadGrammar("source.root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := grammar.TokenizeLine("var", nil).RuleStack
+	if want := []string{"source.root"}; !reflect.DeepEqual(loaded, want) {
+		t.Fatalf("loaded before entering a block = %v, want %v", loaded, want)
+	}
+	state = grammar.TokenizeLine("```js", state).RuleStack
+	result := grammar.TokenizeLine("var", state)
+	if want := []string{"source.root", "source.js"}; !reflect.DeepEqual(loaded, want) {
+		t.Fatalf("loaded after entering the js block = %v, want %v", loaded, want)
+	}
+	scopes := result.Tokens[0].Scopes
+	if scopes[len(scopes)-1] != "keyword.js" {
+		t.Fatalf("scopes = %v, want keyword.js innermost", scopes)
+	}
+}

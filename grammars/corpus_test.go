@@ -78,7 +78,7 @@ func TestEmbeddedCorpus(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: Load})
+			registry := textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: Load, HasGrammar: Has})
 			defer registry.Dispose()
 			grammar, err := registry.LoadGrammar(scopeName)
 			if err != nil {
@@ -87,6 +87,9 @@ func TestEmbeddedCorpus(t *testing.T) {
 			sourceRegistry := textmate.NewRegistry(textmate.RegistryOptions{
 				LoadGrammar: func(scopeName string) (*textmate.RawGrammar, error) {
 					return sourceGrammars[scopeName], nil
+				},
+				HasGrammar: func(scopeName string) bool {
+					return sourceGrammars[scopeName] != nil
 				},
 			})
 			defer sourceRegistry.Dispose()

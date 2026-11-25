@@ -14,6 +14,10 @@ var errRegistryDisposed = errors.New("textmate: registry disposed")
 type RegistryOptions struct {
 	LoadGrammar   func(scopeName string) (*RawGrammar, error)
 	GetInjections func(scopeName string) []string
+	// HasGrammar reports whether LoadGrammar can provide scopeName. When set,
+	// LoadGrammar loads only the root grammar and its injections; an included
+	// grammar is loaded when tokenizing first enters a rule that uses it.
+	HasGrammar func(scopeName string) bool
 }
 
 // Registry owns raw and compiled grammars and resolves their transitive
@@ -61,6 +65,17 @@ func (r *Registry) LoadGrammar(scopeName string) (*Grammar, error) {
 	if disposed {
 		return nil, errRegistryDisposed
 	}
+	if r.options.HasGrammar != nil {
+		if err := r.loadSingleGrammar(scopeName); err != nil {
+			return nil, err
+		}
+		for _, injection := range r.injections(scopeName) {
+			if err := r.loadSingleGrammar(injection); err != nil {
+				return nil, err
+			}
+		}
+		return r.compiledGrammar(scopeName)
+	}
 	processor := newScopeDependencyProcessor(r, scopeName)
 	for len(processor.queue) != 0 {
 		queue := append([]absoluteRuleReference(nil), processor.queue...)
@@ -73,7 +88,10 @@ func (r *Registry) LoadGrammar(scopeName string) (*Grammar, error) {
 			return nil, err
 		}
 	}
+	return r.compiledGrammar(scopeName)
+}
 
+func (r *Registry) compiledGrammar(scopeName string) (*Grammar, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.disposed {
@@ -162,8 +180,28 @@ func (r *Registry) lookup(scopeName string) *RawGrammar {
 		return nil
 	}
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.rawGrammars[scopeName]
+	raw := r.rawGrammars[scopeName]
+	r.mu.RUnlock()
+	if raw == nil && r.options.HasGrammar != nil && r.options.HasGrammar(scopeName) {
+		if r.loadSingleGrammar(scopeName) == nil {
+			r.mu.RLock()
+			raw = r.rawGrammars[scopeName]
+			r.mu.RUnlock()
+		}
+	}
+	return raw
+}
+
+// deferExternal reports whether an include of scopeName can wait until
+// tokenizing reaches it.
+func (r *Registry) deferExternal(scopeName string) bool {
+	if r == nil || r.options.HasGrammar == nil {
+		return false
+	}
+	r.mu.RLock()
+	loaded := r.rawGrammars[scopeName] != nil
+	r.mu.RUnlock()
+	return !loaded && r.options.HasGrammar(scopeName)
 }
 
 func (r *Registry) injections(scopeName string) []string {
